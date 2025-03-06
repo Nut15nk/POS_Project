@@ -1,0 +1,52 @@
+/* App.css */
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4; /* สีพื้นหลัง */
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh; /* ทำให้เต็มความสูงของหน้าจอ */
+  text-align: center;
+}
+
+h1 {
+  color: #333; /* สีข้อความ */
+  font-size: 2.5rem; /* ขนาดข้อความ */
+  margin-bottom: 20px; /* ระยะห่างด้านล่าง */
+}
+
+.link-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* ระยะห่างระหว่างลิงก์ */
+}
+
+.app-link {
+  background-color: #007bff; /* สีพื้นหลังของลิงก์ */
+  color: white; /* สีข้อความของลิงก์ */
+  padding: 10px 20px; /* การเว้นระยะภายใน */
+  text-decoration: none; /* ลบเส้นใต้ */
+  border-radius: 5px; /* มุมโค้ง */
+  transition: background-color 0.3s; /* การเปลี่ยนสีพื้นหลังเมื่อเอาเมาส์ไปวาง */
+}
+
+.app-link:hover {
+  background-color: #0056b3; /* เปลี่ยนสีพื้นหลังเมื่อเอาเมาส์ไปวาง */
+}
+
+@media (max-width: 600px) {
+  h1 {
+      font-size: 2rem; /* ลดขนาดข้อความบนหน้าจอเล็ก */
+  }
+
+  .app-link {
+      padding: 8px 16px; /* ปรับขนาดการเว้นระยะภายในให้เล็กลง */
+  }
+}

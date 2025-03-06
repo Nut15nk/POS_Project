@@ -1,0 +1,151 @@
+/* Profile Container */
+.profile-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+    border: 2px solid #ddd; /* กรอบรอบๆ */
+    border-radius: 10px; /* มุมโค้งมน */
+    background-color: #f9f9f9; /* สีพื้นหลัง */
+}
+
+/* Profile Title */
+.profile-title {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+/* Profile Image Container */
+.profile-image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    border: 2px solid #ddd; /* กรอบรอบๆ */
+    border-radius: 10px;
+    padding: 10px;
+    background-color: white;
+}
+
+/* Profile Image */
+.profile-image {
+    width: 84px; /* กำหนดขนาด */
+    height: 84px; /* กำหนดขนาด */
+    border-radius: 50%; /* ทำให้เป็นวงกลม */
+    object-fit: cover; /* ให้ภาพพอดีกับกรอบ */
+    margin-bottom: 10px;
+    border: 2px solid #ddd; /* กรอบรอบๆ */
+}
+
+/* Edit Profile Form */
+.edit-profile-form {
+    margin-top: 20px;
+}
+
+.edit-profile-form input {
+    padding: 10px;
+    margin: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 200px;
+}
+
+/* Save, Edit, Logout Button Styles */
+
+/* ปุ่ม Save (สีเขียว) */
+.save-button {
+    padding: 10px 20px;
+    margin-top: 10px;
+    cursor: pointer;
+    background-color: #4CAF50; /* สีเขียว */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+/* ปุ่ม Edit (สีฟ้า) */
+.edit-button {
+    padding: 10px 20px;
+    margin-top: 10px;
+    cursor: pointer;
+    background-color: #2196F3; /* สีฟ้า */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+/* ปุ่ม Logout (สีแดง) */
+.logout-button {
+    padding: 10px 20px;
+    margin-top: 10px;
+    cursor: pointer;
+    background-color: #f44336; /* สีแดง */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+/* Button hover effect */
+.save-button:hover {
+    background-color: #45a049; /* สีเขียวเข้มเมื่อ hover */
+}
+
+.edit-button:hover {
+    background-color: #1976D2; /* สีน้ำเงินเข้มเมื่อ hover */
+}
+
+.logout-button:hover {
+    background-color: #d32f2f; /* สีแดงเข้มเมื่อ hover */
+}
+
+/* Disabled button */
+.save-button:disabled,
+.edit-button:disabled,
+.logout-button:disabled {
+    background-color: #ddd;
+    cursor: not-allowed;
+}
+
+/* File input styling */
+input[type="file"] {
+    margin-top: 10px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Profile Info Section */
+.profile-info {
+    margin-top: 20px;
+    border-top: 2px solid #ddd;
+    padding-top: 20px;
+}
+
+.profile-info h2 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+/* Styling for the user information section */
+.profile-info div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Styling for the file input in the profile image */
+input[type="file"] {
+    margin-top: 10px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
