@@ -100,7 +100,7 @@ app.get('/orders', authMiddleware, getOrders);
 app.put('/orders/:orderId', authMiddleware, jsonParser, updateOrder);
 app.delete('/orders/:orderId', authMiddleware, deleteOrder);
 app.get('/orders/report', authMiddleware, getOrderReport); 
-app.get('/orders/seller/report', authMiddleware, getSellerOrderReport); 
+app.get('/orders/seller', authMiddleware, getSellerOrderReport); 
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));

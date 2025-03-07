@@ -6,7 +6,7 @@ function Navbar({ user, onLogout, onEditProfile }) {
     <nav className="navbar">
       <h3>POS System</h3>
       <div>
-        <span>{user.fname} {user.lname}</span>
+        <span>{user.fname} ตำแหน่ง: {user.role}</span>
         <button className="edit-profile-btn" onClick={onEditProfile}>
           แก้ไขโปรไฟล์
         </button>

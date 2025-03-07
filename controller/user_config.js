@@ -15,30 +15,33 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// ตั้งค่า Multer และ Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'profile_images',
     allowed_formats: ['jpg', 'png', 'jpeg'],
-    public_id: (req, file) => `${req.user.id}-${Date.now()}`, // ชื่อไฟล์ไม่ซ้ำ
+    public_id: (req, file) => {
+      // ใช้ timestamp หรือ random string ถ้า req.user.id ยังไม่มี
+      return req.user ? `${req.user.id}-${Date.now()}` : `anonymous-${Date.now()}`;
+    },
     transformation: [
-      { width: 500, height: 500, crop: 'limit' }, // จำกัดขนาดรูป
-      { quality: 'auto' } // ปรับคุณภาพอัตโนมัติ
+      { width: 500, height: 500, crop: 'limit' },
+      { quality: 'auto' }
     ]
   }
 });
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5000000 }, // จำกัดขนาดไฟล์ 5MB
+  limits: { fileSize: 5000000 }, // 5MB
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
     if (mimetype) {
-      cb(null, true);
-    } else {
-      cb(new Error('เฉพาะไฟล์รูปภาพ JPEG/JPG/PNG เท่านั้น'));
+      return cb(null, true);
     }
+    return cb(new Error('เฉพาะไฟล์รูปภาพ JPEG/JPG/PNG เท่านั้น'));
   }
 }).single('profile_image');
 
@@ -54,109 +57,117 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// Register User
 const registerUser = async (req, res) => {
   try {
-    const existingUser = await User.findOne({ email: req.body.email });
-    if (existingUser) {
-      return res.status(400).json({ status: 'error', message: 'มีอีเมลล์นี้อยู่ในระบบแล้ว' });
+    const { email, password, fname, lname } = req.body;
+    if (!email || !password || !fname || !lname) {
+      return res.status(400).json({ status: 'error', message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
     }
 
-    const hash = await bcrypt.hash(req.body.password, 10);
-    const user = new User({
-      email: req.body.email,
-      password: hash,
-      fname: req.body.fname,
-      lname: req.body.lname
-    });
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ status: 'error', message: 'อีเมลนี้ถูกใช้แล้ว' });
+    }
 
+    const hash = await bcrypt.hash(password, 10);
+    const user = new User({ email, password: hash, fname, lname });
     const savedUser = await user.save();
-    const token = jwt.sign({ id: savedUser._id, email: savedUser.email , role: savedUser.role}, secret, { expiresIn: '1h' });
-    res.status(201).json({ status: 'OK', message: 'ทำการสมัครสมาชิกเสร็จสิ้น', token });
+    const token = jwt.sign({ id: savedUser._id, email, role: savedUser.role }, secret, { expiresIn: '1h' });
+    res.status(201).json({ status: 'OK', message: 'สมัครสมาชิกสำเร็จ', token });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    console.error('Register error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
 
+// Login User
 const loginUser = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ status: 'error', message: 'กรุณากรอกอีเมลและรหัสผ่าน' });
+    }
+
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
     }
-    const isLogin = await bcrypt.compare(req.body.password, user.password);
-    if (isLogin) {
-      const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, secret, { expiresIn: '1h' });
-      res.json({ status: 'OK', message: 'ล็อกอินเสร็จสิ้น', token });
-    } else {
-      res.status(401).json({ status: 'error', message: 'รหัสผ่านไม่ถูกต้อง' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ status: 'error', message: 'รหัสผ่านไม่ถูกต้อง' });
     }
+
+    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, secret, { expiresIn: '1h' });
+    res.json({ status: 'OK', message: 'ล็อกอินสำเร็จ', token });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
 
+// Get User Profile
 const userprofile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('id fname lname profile_image_url');
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ status: 'error', message: 'ไม่ได้รับการยืนยันตัวตน' });
+    }
+
+    const user = await User.findById(req.user.id).select('-password -__v');
     if (!user) {
       return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
     }
 
-    res.json({ 
+    res.json({
       status: 'OK',
       user: {
         id: user._id,
+        email: user.email,
         fname: user.fname,
         lname: user.lname,
+        role: user.role,
         profile_image_url: user.profile_image_url || null
       }
     });
   } catch (err) {
-    res.status(500).json({ 
-      status: 'error', 
-      message: 'ข้อผิดพลาดฐานข้อมูล', 
-      error: err.message 
-    });
+    console.error('Profile error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
 
+// Update User Profile
 const updateUserProfile = async (req, res) => {
   try {
     const userId = req.user.id;
+    if (!userId) {
+      return res.status(401).json({ status: 'error', message: 'ไม่ได้รับการยืนยันตัวตน' });
+    }
 
-    // ดึงข้อมูลจาก req.body และ req.file
-    const fname = req.body.fname ? req.body.fname.trim() : null;
-    const lname = req.body.lname ? req.body.lname.trim() : null;
-
-    // ตรวจสอบว่า fname และ lname ต้องไม่ว่าง
+    const { fname, lname } = req.body;
     if (!fname || !lname) {
-      return res.status(400).json({ message: 'ต้องการชื่อและนามสกุล' });
+      return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อและนามสกุล' });
     }
 
     const updateData = { fname, lname };
-
     if (req.file) {
-      const imageUrl = req.file.path; // ได้จาก Cloudinary
-      updateData.profile_image_url = imageUrl;
+      updateData.profile_image_url = req.file.path;
     }
 
-    const result = await User.updateOne(
-      { _id: userId },
-      { $set: updateData }
-    );
-
+    const result = await User.updateOne({ _id: userId }, { $set: updateData });
     if (result.nModified === 0) {
-      return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
+      return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
     }
 
-    const updatedUser = await User.findById(userId).select('id fname lname profile_image_url');
-    res.json({ message: 'โปรไฟล์อัปเดตเสร็จสิ้น', user: updatedUser });
+    const updatedUser = await User.findById(userId).select('-password -__v');
+    res.json({ status: 'OK', message: 'อัปเดตโปรไฟล์สำเร็จ', user: updatedUser });
   } catch (err) {
-    console.error('Error updating profile:', err);
-    res.status(500).json({ message: 'ฐานข้อมูลผิดพลาด', error: err.message });
+    console.error('Update profile error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
 
+// Upload Profile Image
 const uploadProfileImage = (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
@@ -166,6 +177,7 @@ const uploadProfileImage = (req, res) => {
       if (!req.file) {
         return res.status(400).json({ status: 'error', message: 'กรุณาอัปโหลดไฟล์รูปภาพ' });
       }
+
       const imageUrl = req.file.path;
       const result = await User.updateOne(
         { _id: req.user.id },
@@ -174,38 +186,43 @@ const uploadProfileImage = (req, res) => {
       if (result.modifiedCount === 0) {
         return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
       }
-      res.json({ 
+
+      res.json({
         status: 'OK',
-        message: 'อัปโหลดรูปภาพสำเร็จ', 
-        profile_image_url: imageUrl 
+        message: 'อัปโหลดรูปภาพสำเร็จ',
+        profile_image_url: imageUrl
       });
     } catch (err) {
-      res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในการอัปโหลด', error: err.message });
+      console.error('Upload image error:', err);
+      res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
     }
   });
 };
 
+// Get Users (สำหรับ admin)
 const getUsers = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
-      return res.status(403).json({ status: 'error', message: 'เฉพาะแอดมินเท่านั้นที่สามารถดึงข้อมูลผู้ใช้ได้' });
+      return res.status(403).json({ status: 'error', message: 'เฉพาะแอดมินเท่านั้น' });
     }
+
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit) || 10, 1);
     const skip = (page - 1) * limit;
     const totalUsers = await User.countDocuments({ role: 'seller' });
     const users = await User.find({ role: 'seller' })
-      .select('-password -profile_image_url')
+      .select('-password -__v -profile_image_url')
       .skip(skip)
       .limit(limit);
+
     res.json({
       status: 'OK',
-      message: 'ดึงข้อมูลผู้ใช้สำเร็จ',
+      message: 'ดึงข้อมูลสำเร็จ',
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalUsers / limit),
-        totalUsers: totalUsers,
-        limit: limit
+        totalUsers,
+        limit
       },
       users: users.map(user => ({
         id: user._id,
@@ -216,61 +233,72 @@ const getUsers = async (req, res) => {
       }))
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้', error: err.message });
+    console.error('Get users error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
 
+// Update User (สำหรับ admin)
 const updateUser = async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'คุณไม่มีสิทธิ์แก้ไขเฉพาะแอดมินเท่านั้น.' });
-  }
-  const { userId } = req.params;
-  const { email, fname, lname, role } = req.body;
-
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ status: 'error', message: 'เฉพาะแอดมินเท่านั้น' });
+    }
+
+    const { userId } = req.params;
+    const { email, fname, lname, role } = req.body;
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { email, fname, lname, role },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).select('-password -__v');
+
     if (!updatedUser) {
-      return res.status(404).json({ message: ' ไม่พบผู้ใช้' });
+      return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
     }
-    res.json({ message: 'ผู้ใช้อัปเดตเสร็จสิ้น', user: updatedUser });
+
+    res.json({ status: 'OK', message: 'อัปเดตสำเร็จ', user: updatedUser });
   } catch (err) {
-    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล', error: err.message });
+    console.error('Update user error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
 
+// Delete User (สำหรับ admin)
 const deleteUser = async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'คุณไม่มีสิทธิ์แก้ไขเฉพาะแอดมินเท่านั้น.' });
-  }
-  const { userId } = req.params;
-
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ status: 'error', message: 'เฉพาะแอดมินเท่านั้น' });
+    }
+
+    const { userId } = req.params;
     const deletedUser = await User.findByIdAndDelete(userId);
     if (!deletedUser) {
-      return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
+      return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
     }
-    res.json({ message: 'ลบผู้ใช้เสร็จสิ้น' });
+
+    res.json({ status: 'OK', message: 'ลบสำเร็จ' });
   } catch (err) {
-    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการลบข้อมูล', error: err.message });
+    console.error('Delete user error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
 
-
+// Logout User
 const logoutUser = (req, res) => {
-  res.clearCookie('token');
-  res.status(200).json({ message: 'ออกจากระบบเสร็จสิ้น' });
+  // เนื่องจาก frontend ใช้ localStorage แทน cookie ให้ลบ token ทางฝั่ง client
+  res.json({ status: 'OK', message: 'ออกจากระบบสำเร็จ' });
 };
 
+// Authenticate (สำหรับทดสอบ)
 const authenticate = (req, res) => {
-  res.json({ status: 'ok', decoded: req.user });
+  res.json({ status: 'OK', decoded: req.user });
 };
 
+// Protected Route (สำหรับทดสอบ)
 const protectedRoute = (req, res) => {
-  res.json({ status: 'OK', message: 'ได้รับอนุมัติแล้ว', user: req.user });
+  res.json({ status: 'OK', message: 'ได้รับอนุมัติ', user: req.user });
 };
 
 module.exports = {
@@ -285,5 +313,5 @@ module.exports = {
   updateUserProfile,
   getUsers,
   updateUser,
-  deleteUser,
+  deleteUser
 };

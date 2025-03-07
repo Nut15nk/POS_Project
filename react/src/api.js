@@ -1,79 +1,101 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3333';
-
+// กำหนด base URL ของ backend
 const api = axios.create({
-  baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: 'http://localhost:3333',
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+// ฟังก์ชันเพื่อตั้งค่า token ใน header
+const setAuthToken = (token) => {
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
   }
-  return config;
-});
+};
 
-// User APIs
+// ฟังก์ชัน login
 export const login = async (email, password) => {
-  const response = await api.post('/login', { email, password }).then((res) => res.data);
-  if (response.token) {
-    localStorage.setItem('token', response.token);
-    const profile = await getProfile();
-    localStorage.setItem('role', profile.user?.role || '');
-  }
-  return response;
+  const response = await api.post('/login', { email, password });
+  return response.data;
 };
 
-export const register = (email, password, fname, lname) => 
-  api.post('/register', { email, password, fname, lname }).then((res) => res.data);
+// ฟังก์ชัน register
+export const register = async (email, password, fname, lname) => {
+  const response = await api.post('/register', { email, password, fname, lname });
+  return response.data;
+};
 
-export const getProfile = () => 
-  api.get('/user/profile').then((res) => res.data);
+// ฟังก์ชันดึงโปรไฟล์
+export const getProfile = async () => {
+  const response = await api.get('/user/profile');
+  return response.data;
+};
 
-export const updateProfile = (profileData) => 
-  api.put('/user/profile', profileData, {
+// ฟังก์ชันดึงสินค้าทั้งหมด
+export const getProducts = async () => {
+  const response = await api.get('/products');
+  return response.data;
+};
+
+// ฟังก์ชันดึงคำสั่งซื้อของผู้ขาย
+export const getSellerOrders = async () => {
+  const response = await api.get('/orders/seller');
+  return response.data;
+};
+
+// ฟังก์ชันดึงคำสั่งซื้อทั้งหมด (สำหรับ admin)
+export const getOrderReport = async () => {
+  const response = await api.get('/orders/report');
+  return response.data;
+};
+
+// ฟังก์ชันลบสินค้า
+export const deleteProduct = async (productId) => {
+  const response = await api.delete(`/products/${productId}`);
+  return response.data;
+};
+
+// ฟังก์ชันลบคำสั่งซื้อ
+export const deleteOrder = async (orderId) => {
+  const response = await api.delete(`/orders/${orderId}`);
+  return response.data;
+};
+
+// ฟังก์ชันแก้ไขสินค้า
+export const updateProduct = async (productId, formData) => {
+  const response = await api.put(`/products/${productId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-  }).then((res) => res.data);
-
-// Product APIs
-export const getProducts = () => 
-  api.get('/products').then((res) => res.data);
-
-export const uploadProduct = (productData) => 
-  api.post('/product/upload', productData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }).then((res) => res.data);
-
-export const deleteProduct = (productId) => 
-  api.delete(`/product/${productId}`).then((res) => res.data);
-
-export const updateProduct = (productId, productData) => 
-  api.put(`/product/${productId}`, productData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }).then((res) => res.data);
-
-// Order APIs
-export const getSellerOrders = () => 
-  api.get('/orders/seller/report').then((res) => {
-    console.log('Seller Orders Response:', res.data); // Debug
-    return res.data;
   });
+  return response.data;
+};
 
-export const getAdminOrders = () => 
-  api.get('/orders/report').then((res) => {
-    console.log('Admin Orders Response:', res.data); // Debug
-    return res.data;
+// ฟังก์ชันแก้ไขคำสั่งซื้อ
+export const updateOrder = async (orderId, data) => {
+  const response = await api.put(`/orders/${orderId}`, data);
+  return response.data;
+};
+
+// ฟังก์ชันอัปโหลดสินค้าใหม่
+export const uploadProduct = async (formData) => {
+  const response = await api.post('/products', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return response.data;
+};
 
-export const deleteOrder = (orderId) => 
-  api.delete(`/orders/${orderId}`).then((res) => res.data);
+// ฟังก์ชันอัปเดตโปรไฟล์
+export const updateProfile = async (formData) => {
+  const response = await api.put('/user/profile', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
 
-export const updateOrder = (orderId, orderData) => 
-  api.put(`/orders/${orderId}`, orderData).then((res) => res.data);
-
-export const logout = () => {
+// เพิ่มฟังก์ชัน logout (ถ้าต้องการ)
+export const logoutApi = async () => {
   localStorage.removeItem('token');
-  localStorage.removeItem('role');
+  setAuthToken(null);
 };
+
+export { setAuthToken }; // Export เพื่อให้ component เรียกใช้ได้

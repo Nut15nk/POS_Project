@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // มีการ import อยู่แล้ว
 import { 
   getProducts, 
   getSellerOrders, 
-  getAdminOrders, 
+  getOrderReport, 
   deleteProduct, 
   deleteOrder, 
   updateProduct, 
   updateOrder,
   uploadProduct,
   getProfile,
-  updateProfile 
+  updateProfile,
+  setAuthToken // เพิ่มการ import setAuthToken
 } from '../api';
 import ProductCard from './ProductCard';
 
@@ -23,14 +25,22 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [newProduct, setNewProduct] = useState(null);
   const [currentUser, setCurrentUser] = useState(user);
   const [isSaving, setIsSaving] = useState(false);
+  const navigate = useNavigate(); // กำหนด navigate จาก useNavigate
 
   const fetchData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login'); // ใช้ navigate ที่นี่
+      return;
+    }
+    setAuthToken(token); // ตั้งค่า token ก่อนเรียก API
+
     setLoading(true);
     setError('');
     try {
       const [productRes, orderRes, profileRes] = await Promise.all([
         getProducts(),
-        user.role === 'admin' ? getAdminOrders() : getSellerOrders(),
+        user.role === 'admin' ? getOrderReport() : getSellerOrders(),
         getProfile()
       ]);
 
@@ -38,23 +48,34 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       console.log('Order Response:', orderRes);
       console.log('Profile Response:', profileRes);
 
+      if (productRes.status !== 'OK') throw new Error(productRes.message);
+      if (orderRes.status !== 'OK') throw new Error(orderRes.message);
+      if (profileRes.status !== 'OK') throw new Error(profileRes.message);
+
       setProducts(productRes.products || []);
       setOrders(orderRes || {});
       setCurrentUser(profileRes.user || user);
       updateUser(profileRes.user || user);
-
-      console.log('Orders State after set:', orderRes);
     } catch (err) {
-      setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
       console.error('Fetch Error:', err);
+      setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        setAuthToken(null);
+        navigate('/login'); // ใช้ navigate ที่นี่
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, [user.role]);
+    if (user?.role) {
+      fetchData();
+    } else {
+      navigate('/login'); // ใช้ navigate ที่นี่
+    }
+  }, [user?.role, navigate]); // เพิ่ม navigate ใน dependency array
 
   const handleDeleteProduct = async (productId) => {
     if (window.confirm('ยืนยันการลบสินค้านี้?')) {
@@ -168,12 +189,12 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   const handleImageChange = (e) => {
-    if (editProduct) {
-      setEditProduct({ ...editProduct, newImage: e.target.files[0] });
-    } else if (editProfile) {
-      setEditProfile({ ...editProfile, newImage: e.target.files[0] });
-    } else if (newProduct) {
-      setNewProduct({ ...newProduct, newImage: e.target.files[0] });
+    const file = e.target.files[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      if (editProfile) setEditProfile({ ...editProfile, avatar: imageUrl });
+      if (editProduct) setEditProduct({ ...editProduct, avatar: imageUrl });
+      if (newProduct) setNewProduct({ ...newProduct, avatar: imageUrl });
     }
   };
 
@@ -199,7 +220,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     <div className="dashboard">
       <h1>แดชบอร์ด {currentUser.role === 'admin' ? 'แอดมิน' : 'ผู้ขาย'}</h1>
       <div className="profile">
-        <img src={currentUser.profile_image_url || 'default-avatar.png'} alt="Profile" />
+        <img src={currentUser.profile_image_url || './default-avatar.png'} alt="Profile" />
         <p>
           ยินดีต้อนรับ, {(currentUser.fname || 'ไม่ระบุชื่อ')} {(currentUser.lname || '')}
         </p>
@@ -301,9 +322,9 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
           <>
             {currentUser.role === 'seller' && (
               <div className="revenue-summary">
-                <p>รายได้ทั้งหมด: {formatCurrency(orders.totalSales)}</p>
-                <p>รายได้วันนี้: {formatCurrency(orders.dailySales)}</p>
-                <p>รายได้เดือนนี้: {formatCurrency(orders.monthlySales)}</p>
+                <p>รายได้ทั้งหมด: {formatCurrency(orders.totalRevenue)}</p>
+                <p>รายได้วันนี้: {formatCurrency(orders.dailyRevenue)}</p>
+                <p>รายได้เดือนนี้: {formatCurrency(orders.monthlyRevenue)}</p>
                 <p>คำสั่งซื้อที่เสร็จสิ้น: {orders.completedOrders || 0} รายการ</p>
                 <p>คำสั่งซื้อที่รอดำเนินการ: {orders.pendingOrders || 0} รายการ</p>
               </div>

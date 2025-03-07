@@ -57,6 +57,7 @@ const getOrders = async (req, res) => {
 
     let orders;
     let totalOrders;
+
     if (req.user.role === 'admin') {
       totalOrders = await Order.countDocuments();
       orders = await Order.find()
@@ -73,6 +74,41 @@ const getOrders = async (req, res) => {
         .limit(limit);
     }
 
+    // คำนวณข้อมูลสรุป
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const summary = orders.reduce(
+      (acc, order) => {
+        const orderTotal = order.total || 0;
+        acc.totalSales += orderTotal;
+
+        if (new Date(order.createdAt).setHours(0, 0, 0, 0) === today.setHours(0, 0, 0, 0)) {
+          acc.dailySales += orderTotal;
+        }
+
+        const month = new Date(order.createdAt).getMonth();
+        if (month === today.getMonth()) {
+          acc.monthlySales += orderTotal;
+        }
+
+        acc.statusSummary[order.status || 'pending'] = (acc.statusSummary[order.status || 'pending'] || 0) + 1;
+        return acc;
+      },
+      {
+        totalSales: 0,
+        dailySales: 0,
+        monthlySales: 0,
+        completedOrders: 0,
+        pendingOrders: 0,
+        statusSummary: {}
+      }
+    );
+
+    // นับคำสั่งซื้อตามสถานะ
+    summary.completedOrders = summary.statusSummary['completed'] || 0;
+    summary.pendingOrders = summary.statusSummary['pending'] || 0;
+
     res.json({
       status: 'OK',
       message: 'ดึงข้อมูลคำสั่งซื้อสำเร็จ',
@@ -85,7 +121,7 @@ const getOrders = async (req, res) => {
       orders: orders.map(order => ({
         id: order._id,
         user: order.userId ? {
-          id: order.userId._id || '',
+          id: order.userId._id,
           email: order.userId.email || '',
           fname: order.userId.fname || '',
           lname: order.userId.lname || ''
@@ -94,14 +130,23 @@ const getOrders = async (req, res) => {
           productId: p.productId?._id || '',
           name: p.productId?.name || 'ไม่ระบุชื่อ',
           quantity: p.quantity || 0,
-          price: p.price || 0
+          price: p.productId?.price || 0 // ใช้ price จาก productId ถ้ามี
         })),
         total: order.total || 0,
         status: order.status || 'pending',
         createdAt: order.createdAt || null
-      }))
+      })),
+      summary: {
+        totalSales: summary.totalSales,
+        dailySales: summary.dailySales,
+        monthlySales: summary.monthlySales,
+        completedOrders: summary.completedOrders,
+        pendingOrders: summary.pendingOrders,
+        statusSummary: summary.statusSummary
+      }
     });
   } catch (err) {
+    console.error('Get orders error:', err);
     res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในการดึงข้อมูลคำสั่งซื้อ', error: err.message });
   }
 };
@@ -185,7 +230,6 @@ const getOrderReport = async (req, res) => {
     const tomorrowUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1)); // 2025-03-08 00:00:00 UTC
 
     const dailyOrders = await Order.find({ createdAt: { $gte: todayUTC, $lt: tomorrowUTC } });
-    console.log('Daily Orders:', dailyOrders); // Debug
 
     const dailyRevenue = await Order.aggregate([
       { $match: { createdAt: { $gte: todayUTC, $lt: tomorrowUTC } } },
@@ -196,7 +240,6 @@ const getOrderReport = async (req, res) => {
     const nextMonthUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1)); // 2025-04-01 00:00:00 UTC
 
     const monthlyOrders = await Order.find({ createdAt: { $gte: monthStartUTC, $lt: nextMonthUTC } });
-    console.log('Monthly Orders:', monthlyOrders); // Debug
 
     const monthlyRevenue = await Order.aggregate([
       { $match: { createdAt: { $gte: monthStartUTC, $lt: nextMonthUTC } } },
@@ -252,64 +295,52 @@ const getOrderReport = async (req, res) => {
 const getSellerOrderReport = async (req, res) => {
   try {
     const sellerId = req.user.id;
-
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit) || 10, 1);
     const skip = (page - 1) * limit;
 
     const sellerProducts = await Product.find({ createdBy: sellerId }).select('_id');
-    const productIds = sellerProducts.map(p => p._id.toString());
-    console.log('Seller Products:', sellerProducts); // Debug
-    console.log('Product IDs:', productIds); // Debug
+    const productIds = sellerProducts.map(p => p._id); // ใช้ ObjectId
 
     const totalOrders = await Order.countDocuments({ 'products.productId': { $in: productIds } });
+
     const orders = await Order.find({ 'products.productId': { $in: productIds } })
       .populate('userId', 'email fname lname')
       .populate('products.productId', 'name price')
       .skip(skip)
       .limit(limit);
 
-    const totalSales = await Order.aggregate([
+    const totalRevenueAgg = await Order.aggregate([
       { $match: { 'products.productId': { $in: productIds } } },
-      { $unwind: '$products' },
-      { $match: { 'products.productId': { $in: productIds } } },
-      { $group: { _id: null, total: { $sum: { $multiply: ['$products.price', '$products.quantity'] } } } }
+      { $group: { _id: null, total: { $sum: '$total' } } }
     ]);
 
     const today = new Date();
     const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
     const tomorrowUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
 
-    const dailyOrders = await Order.find({ 'products.productId': { $in: productIds }, createdAt: { $gte: todayUTC, $lt: tomorrowUTC } });
-    console.log('Seller Daily Orders:', dailyOrders);
-
-    const dailySales = await Order.aggregate([
+    const dailyRevenueAgg = await Order.aggregate([
       { $match: { 'products.productId': { $in: productIds }, createdAt: { $gte: todayUTC, $lt: tomorrowUTC } } },
-      { $unwind: '$products' },
-      { $match: { 'products.productId': { $in: productIds } } },
-      { $group: { _id: null, total: { $sum: { $multiply: ['$products.price', '$products.quantity'] } } } }
+      { $group: { _id: null, total: { $sum: '$total' } } }
     ]);
 
     const monthStartUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
     const nextMonthUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
 
-    const monthlyOrders = await Order.find({ 'products.productId': { $in: productIds }, createdAt: { $gte: monthStartUTC, $lt: nextMonthUTC } });
-    console.log('Seller Monthly Orders:', monthlyOrders);
-
-    const monthlySales = await Order.aggregate([
+    const monthlyRevenueAgg = await Order.aggregate([
       { $match: { 'products.productId': { $in: productIds }, createdAt: { $gte: monthStartUTC, $lt: nextMonthUTC } } },
-      { $unwind: '$products' },
-      { $match: { 'products.productId': { $in: productIds } } },
-      { $group: { _id: null, total: { $sum: { $multiply: ['$products.price', '$products.quantity'] } } } }
+      { $group: { _id: null, total: { $sum: '$total' } } }
     ]);
 
-    // ปรับปรุง statusSummary ให้คำนวณจาก orders ที่ดึงมา
-    const statusSummary = orders.length > 0
-      ? await Order.aggregate([
-          { $match: { 'products.productId': { $in: productIds } } },
-          { $group: { _id: '$status', count: { $sum: 1 } } }
-        ])
-      : [];
+    const statusSummaryAgg = await Order.aggregate([
+      { $match: { 'products.productId': { $in: productIds } } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    const statusSummary = statusSummaryAgg.reduce((acc, item) => {
+      acc[item._id] = item.count;
+      return acc;
+    }, {});
 
     res.json({
       status: 'OK',
@@ -317,18 +348,15 @@ const getSellerOrderReport = async (req, res) => {
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalOrders / limit),
-        totalOrders: totalOrders,
-        limit: limit
+        totalOrders,
+        limit
       },
-      totalSales: totalSales.length > 0 ? totalSales[0].total : 0,
-      dailySales: dailySales.length > 0 ? dailySales[0].total : 0,
-      monthlySales: monthlySales.length > 0 ? monthlySales[0].total : 0,
-      statusSummary: statusSummary.reduce((acc, item) => {
-        acc[item._id] = item.count;
-        return acc;
-      }, {}),
-      completedOrders: statusSummary.find(s => s._id === 'completed')?.count || 0,
-      pendingOrders: statusSummary.find(s => s._id === 'pending')?.count || 0,
+      totalRevenue: totalRevenueAgg.length > 0 ? totalRevenueAgg[0].total : 0,
+      dailyRevenue: dailyRevenueAgg.length > 0 ? dailyRevenueAgg[0].total : 0,
+      monthlyRevenue: monthlyRevenueAgg.length > 0 ? monthlyRevenueAgg[0].total : 0,
+      statusSummary,
+      completedOrders: statusSummary.completed || 0,
+      pendingOrders: statusSummary.pending || 0,
       orders: orders.map(order => ({
         id: order._id,
         buyer: order.userId ? {
@@ -343,7 +371,7 @@ const getSellerOrderReport = async (req, res) => {
             productId: p.productId?._id?.toString() || p.productId.toString(),
             name: p.productId?.name || p.name || 'ไม่ระบุชื่อ',
             quantity: p.quantity || 0,
-            price: p.price || 0
+            price: p.productId?.price || p.price || 0
           })),
         total: order.total || 0,
         status: order.status || 'pending',

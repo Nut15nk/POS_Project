@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, getProfile } from '../api'; // เพิ่ม getProfile ที่นี่
+import { login, getProfile, setAuthToken } from '../api';
 
 function Login({ setUser }) {
   const [email, setEmail] = useState('');
@@ -13,14 +13,44 @@ function Login({ setUser }) {
     e.preventDefault();
     setLoading(true);
     setError('');
+
     try {
-      const res = await login(email, password);
-      localStorage.setItem('token', res.token);
-      const profile = await getProfile();
-      setUser(profile.user);
+      // เรียก API login
+      const loginRes = await login(email, password);
+      if (loginRes.status !== 'OK') {
+        throw new Error(loginRes.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+      }
+
+      const token = loginRes.token;
+      if (!token) {
+        throw new Error('ไม่ได้รับ token จากเซิร์ฟเวอร์');
+      }
+
+      // ตั้งค่า token
+      setAuthToken(token);
+      localStorage.setItem('token', token);
+
+      // ดึงข้อมูลโปรไฟล์
+      const profileRes = await getProfile();
+      if (profileRes.status !== 'OK') {
+        throw new Error(profileRes.message || 'ไม่สามารถดึงข้อมูลโปรไฟล์ได้');
+      }
+
+      const user = profileRes.user;
+      if (!user || !user.id) {
+        throw new Error('ข้อมูลผู้ใช้ไม่สมบูรณ์');
+      }
+
+      // อัปเดต state และ redirect
+      setUser(user);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+      console.error('Login error:', err);
+      const errorMessage = err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+      setError(errorMessage);
+      // ล้าง token ถ้ามี error
+      setAuthToken(null);
+      localStorage.removeItem('token');
     } finally {
       setLoading(false);
     }
@@ -38,6 +68,7 @@ function Login({ setUser }) {
             onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="กรุณากรอกอีเมล"
+            disabled={loading}
           />
         </div>
         <div className="form-group">
@@ -48,9 +79,17 @@ function Login({ setUser }) {
             onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="กรุณากรอกรหัสผ่าน"
+            disabled={loading}
           />
         </div>
-        {error && <p className="error">{error}</p>}
+        {error && (
+          <p className="error">
+            {error}
+            {error.includes('ไม่พบผู้ใช้') || error.includes('รหัสผ่านไม่ถูกต้อง') ? (
+              <span> <a href="/register">สมัครสมาชิกใหม่</a></span>
+            ) : null}
+          </p>
+        )}
         <button type="submit" disabled={loading}>
           {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
         </button>
