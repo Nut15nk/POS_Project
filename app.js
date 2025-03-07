@@ -32,7 +32,9 @@ const {
   createOrder,
   getOrders,
   updateOrder,
-  deleteOrder
+  deleteOrder,
+  getOrderReport,
+  getSellerOrderReport
 } = require('./controller/orderController');
 
 const app = express();
@@ -81,7 +83,7 @@ app.get('/protected', authMiddleware, protectedRoute);
 app.post('/logout', jsonParser, logoutUser);
 app.get('/user/profile', authMiddleware, userprofile);
 app.post('/user/uploadprofile', authMiddleware, upload.single('profile_image'), uploadProfileImage);
-app.put('/user/profile', authMiddleware, jsonParser, updateUserProfile);
+app.put('/user/profile', authMiddleware, upload.single('profile_image'), updateUserProfile);
 app.get('/users', authMiddleware, getUsers);
 app.put('/users/:userId', authMiddleware, jsonParser, updateUser);
 app.delete('/users/:userId', authMiddleware, deleteUser);
@@ -97,6 +99,8 @@ app.post('/orders', authMiddleware, jsonParser, createOrder);
 app.get('/orders', authMiddleware, getOrders);
 app.put('/orders/:orderId', authMiddleware, jsonParser, updateOrder);
 app.delete('/orders/:orderId', authMiddleware, deleteOrder);
+app.get('/orders/report', authMiddleware, getOrderReport); 
+app.get('/orders/seller/report', authMiddleware, getSellerOrderReport); 
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));

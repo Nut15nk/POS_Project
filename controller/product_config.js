@@ -18,6 +18,7 @@ const orderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   products: [{
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    name: { type: String }, // เพิ่ม field นี้
     quantity: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true }
   }],
