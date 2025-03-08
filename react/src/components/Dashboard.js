@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // มีการ import อยู่แล้ว
+import { useNavigate } from 'react-router-dom';
 import { 
   getProducts, 
   getSellerOrders, 
@@ -11,12 +11,13 @@ import {
   uploadProduct,
   getProfile,
   updateProfile,
-  setAuthToken // เพิ่มการ import setAuthToken
+  setAuthToken 
 } from '../api';
 import ProductCard from './ProductCard';
 
 function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
-  const [products, setProducts] = useState([]);
+  const [myProducts, setMyProducts] = useState([]);
+  const [othersProducts, setOthersProducts] = useState([]);
   const [orders, setOrders] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,15 +26,16 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [newProduct, setNewProduct] = useState(null);
   const [currentUser, setCurrentUser] = useState(user);
   const [isSaving, setIsSaving] = useState(false);
-  const navigate = useNavigate(); // กำหนด navigate จาก useNavigate
+  const navigate = useNavigate();
 
   const fetchData = async () => {
     const token = localStorage.getItem('token');
+    console.log('Token in fetchData:', token);
     if (!token) {
-      navigate('/login'); // ใช้ navigate ที่นี่
+      navigate('/login');
       return;
     }
-    setAuthToken(token); // ตั้งค่า token ก่อนเรียก API
+    setAuthToken(token);
 
     setLoading(true);
     setError('');
@@ -52,7 +54,25 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       if (orderRes.status !== 'OK') throw new Error(orderRes.message);
       if (profileRes.status !== 'OK') throw new Error(profileRes.message);
 
-      setProducts(productRes.products || []);
+      // ดึง ID ผู้ใช้จาก profile
+      const myId = profileRes.user._id || profileRes.user.id;
+      console.log('My User ID:', myId);
+
+      // กรองสินค้าที่ตัวเองสร้าง (createdBy.id ต้องตรงกับ myId)
+      const myProds = productRes.products.filter(p => 
+        p.createdBy && p.createdBy.id.toString() === myId.toString()
+      );
+
+      // กรองสินค้าที่คนอื่นสร้าง (createdBy.id ไม่ตรงกับ myId)
+      const othersProds = productRes.products.filter(p => 
+        p.createdBy && p.createdBy.id.toString() !== myId.toString()
+      );
+
+      console.log('My Products:', myProds);
+      console.log('Others Products:', othersProds);
+
+      setMyProducts(myProds || []);
+      setOthersProducts(othersProds || []);
       setOrders(orderRes || {});
       setCurrentUser(profileRes.user || user);
       updateUser(profileRes.user || user);
@@ -62,7 +82,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       if (err.response?.status === 401) {
         localStorage.removeItem('token');
         setAuthToken(null);
-        navigate('/login'); // ใช้ navigate ที่นี่
+        navigate('/login');
       }
     } finally {
       setLoading(false);
@@ -73,9 +93,9 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     if (user?.role) {
       fetchData();
     } else {
-      navigate('/login'); // ใช้ navigate ที่นี่
+      navigate('/login');
     }
-  }, [user?.role, navigate]); // เพิ่ม navigate ใน dependency array
+  }, [user?.role, navigate]);
 
   const handleDeleteProduct = async (productId) => {
     if (window.confirm('ยืนยันการลบสินค้านี้?')) {
@@ -179,9 +199,11 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       }
       const updatedProfile = await updateProfile(formData);
       setEditProfile(null);
+      setCurrentUser(updatedProfile.user);
+      updateUser(updatedProfile.user);
       fetchData();
-      updateUser(updatedProfile.user || { ...currentUser, fname: editProfile.fname, lname: editProfile.lname });
     } catch (err) {
+      console.error('Save profile error:', err);
       setError('ไม่สามารถแก้ไขโปรไฟล์ได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
@@ -192,9 +214,9 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     const file = e.target.files[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
-      if (editProfile) setEditProfile({ ...editProfile, avatar: imageUrl });
-      if (editProduct) setEditProduct({ ...editProduct, avatar: imageUrl });
-      if (newProduct) setNewProduct({ ...newProduct, avatar: imageUrl });
+      if (editProfile) setEditProfile({ ...editProfile, avatar: imageUrl, newImage: file });
+      if (editProduct) setEditProduct({ ...editProduct, avatar: imageUrl, newImage: file });
+      if (newProduct) setNewProduct({ ...newProduct, avatar: imageUrl, newImage: file });
     }
   };
 
@@ -226,14 +248,15 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
         </p>
       </div>
 
+      {/* สินค้าของตัวเอง */}
       <section className="products">
         <div className="products-header">
           <h2>สินค้าของคุณ</h2>
           <span className="icon-add" onClick={handleAddProduct}>+</span>
         </div>
         <div className="product-list">
-          {products.length > 0 ? (
-            products.map((product) => (
+          {myProducts.length > 0 ? (
+            myProducts.map((product) => (
               <div key={product.id} className="product-item">
                 <ProductCard product={product} />
                 <div className="product-actions">
@@ -316,6 +339,35 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
         )}
       </section>
 
+      {/* สินค้าของผู้อื่น (เฉพาะ Admin) */}
+      {currentUser.role === 'admin' && (
+        <section className="others-products">
+          <h2>สินค้าของผู้ขายอื่น</h2>
+          <div className="product-list">
+            {othersProducts.length > 0 ? (
+              othersProducts.map((product) => (
+                <div key={product.id} className="product-item">
+                  <div className="product-card">
+                    <img src={product.product_image_url || './default-product.png'} alt={product.name} />
+                    <h3>{product.name}</h3>
+                    <p>{product.description || 'ไม่มีคำอธิบาย'}</p>
+                    <p className="seller-info">
+                      เจ้าของ: {(product.createdBy?.fname || 'ไม่ระบุชื่อ')} {(product.createdBy?.lname || '')}
+                    </p>
+                  </div>
+                  <div className="product-actions">
+                    <span className="icon-delete" onClick={() => handleDeleteProduct(product.id)} />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p>ไม่มีสินค้าของผู้ขายอื่น</p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ส่วน Orders คงเดิม */}
       <section className="orders">
         <h2>รายงานคำสั่งซื้อ</h2>
         {orders ? (

@@ -112,8 +112,10 @@ const getProducts = async (req, res) => {
 
     let products;
     if (role === 'admin') {
+      // Admin เห็นสินค้าทั้งหมด
       products = await Product.find().populate('createdBy', 'email fname lname');
     } else {
+      // Seller เห็นเฉพาะสินค้าของตัวเอง
       products = await Product.find({ createdBy: userId }).populate('createdBy', 'email fname lname');
     }
 

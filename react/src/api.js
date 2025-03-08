@@ -52,7 +52,7 @@ export const getOrderReport = async () => {
 
 // ฟังก์ชันลบสินค้า
 export const deleteProduct = async (productId) => {
-  const response = await api.delete(`/products/${productId}`);
+  const response = await api.delete(`/product/${productId}`);
   return response.data;
 };
 
@@ -64,7 +64,7 @@ export const deleteOrder = async (orderId) => {
 
 // ฟังก์ชันแก้ไขสินค้า
 export const updateProduct = async (productId, formData) => {
-  const response = await api.put(`/products/${productId}`, formData, {
+  const response = await api.put(`/product/${productId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return response.data;
@@ -78,7 +78,7 @@ export const updateOrder = async (orderId, data) => {
 
 // ฟังก์ชันอัปโหลดสินค้าใหม่
 export const uploadProduct = async (formData) => {
-  const response = await api.post('/products', formData, {
+  const response = await api.post('/product/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return response.data;
@@ -96,6 +96,14 @@ export const updateProfile = async (formData) => {
 export const logoutApi = async () => {
   localStorage.removeItem('token');
   setAuthToken(null);
+};
+
+// เพิ่มฟังก์ชัน UploadPorfileImage
+export const uploadProfileImage = async (formData) => {
+  const response = await api.post('/user/uploadprofile', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
 };
 
 export { setAuthToken }; // Export เพื่อให้ component เรียกใช้ได้

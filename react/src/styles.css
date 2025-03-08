@@ -35,7 +35,7 @@ body {
   justify-content: space-between;
   align-items: center;
   background-color: var(--light-bg);
-  padding: 15px 25px; /* คงความกว้างเดิม */
+  padding: 15px 25px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   margin-bottom: 20px;
@@ -202,7 +202,7 @@ button:disabled {
   right: 15px;
 }
 
-/* Products Section */
+/* Products Section (สินค้าของตัวเอง) */
 .products-header {
   display: flex;
   justify-content: space-between;
@@ -289,6 +289,85 @@ button:disabled {
 }
 
 .product-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* Others Products Section (สินค้าของผู้อื่น) */
+.others-products {
+  margin-top: 40px; /* ระยะห่างจาก section ก่อนหน้า */
+}
+
+.others-products h2 {
+  font-size: 1.5rem;
+  color: var(--secondary-color);
+  margin-bottom: 20px;
+}
+
+.others-products .product-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  overflow: hidden;
+}
+
+.others-products .product-item {
+  position: relative;
+}
+
+.others-products .product-card {
+  background-color: var(--light-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 15px;
+  transition: transform 0.3s, box-shadow 0.3s;
+  width: 100%;
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.others-products .product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.others-products .product-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.others-products .product-card h3 {
+  font-size: 1.1rem;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.others-products .product-card p {
+  font-size: 0.9rem;
+  color: var(--secondary-color);
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.others-products .product-card .seller-info {
+  font-size: 0.85rem;
+  color: #555;
+  margin-top: 5px;
+  font-style: italic;
+}
+
+.others-products .product-actions {
   margin-top: 10px;
   display: flex;
   gap: 10px;
@@ -542,24 +621,33 @@ tr:hover {
     font-size: 1rem;
   }
 
-  /* Products */
-  .products h2 {
+  /* Products และ Others Products */
+  .products h2,
+  .others-products h2 {
     font-size: 1.3rem;
   }
-  .product-list {
+  .products .product-list,
+  .others-products .product-list {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
-  .product-card {
+  .products .product-card,
+  .others-products .product-card {
     height: 250px;
   }
-  .product-card img {
+  .products .product-card img,
+  .others-products .product-card img {
     height: 120px;
   }
-  .product-card h3 {
+  .products .product-card h3,
+  .others-products .product-card h3 {
     font-size: 1rem;
   }
-  .product-card p {
+  .products .product-card p,
+  .others-products .product-card p {
     font-size: 0.85rem;
+  }
+  .others-products .product-card .seller-info {
+    font-size: 0.8rem;
   }
 
   /* Orders */
@@ -585,12 +673,12 @@ tr:hover {
   table {
     font-size: 0.8rem;
     display: block;
-    overflow-x: auto; /* ทำให้ตารางเลื่อนแนวนอนได้ */
+    overflow-x: auto;
     white-space: nowrap;
   }
   th, td {
     padding: 8px 10px;
-    min-width: 100px; /* ป้องกันการบีบอัดมากเกินไป */
+    min-width: 100px;
   }
 
   /* Modal */
@@ -666,24 +754,33 @@ tr:hover {
     font-size: 0.9rem;
   }
 
-  /* Products */
-  .products h2 {
+  /* Products และ Others Products */
+  .products h2,
+  .others-products h2 {
     font-size: 1.2rem;
   }
-  .product-list {
-    grid-template-columns: 1fr; /* เหลือ 1 คอลัมน์สำหรับหน้าจอเล็กมาก */
+  .products .product-list,
+  .others-products .product-list {
+    grid-template-columns: 1fr;
   }
-  .product-card {
+  .products .product-card,
+  .others-products .product-card {
     height: 220px;
   }
-  .product-card img {
+  .products .product-card img,
+  .others-products .product-card img {
     height: 100px;
   }
-  .product-card h3 {
+  .products .product-card h3,
+  .others-products .product-card h3 {
     font-size: 0.9rem;
   }
-  .product-card p {
+  .products .product-card p,
+  .others-products .product-card p {
     font-size: 0.8rem;
+  }
+  .others-products .product-card .seller-info {
+    font-size: 0.75rem;
   }
 
   /* Orders */

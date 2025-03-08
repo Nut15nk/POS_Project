@@ -183,6 +183,7 @@ const uploadProfileImage = (req, res) => {
         { _id: req.user.id },
         { $set: { profile_image_url: imageUrl } }
       );
+      console.log(imageUrl ,result)
       if (result.modifiedCount === 0) {
         return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
       }
