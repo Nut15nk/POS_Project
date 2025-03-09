@@ -53,10 +53,8 @@ function Login({ setUser }) {
       navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
-      // ดึงข้อความ error จาก backend
       const errorMessage = err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
       setError(errorMessage);
-      // ล้าง token ถ้ามี error
       setAuthToken(null);
       localStorage.removeItem('token');
     } finally {
@@ -91,19 +89,35 @@ function Login({ setUser }) {
           />
         </div>
         {error && (
-          <p className="error">
-            {error}
-            {error.includes('ไม่พบผู้ใช้') || error.includes('รหัสผ่านไม่ถูกต้อง') ? (
-              <span> <a href="/register">สมัครสมาชิกใหม่</a></span>
-            ) : null}
-          </p>
-        )}
+            <p className="error">
+              {error}
+              {error.includes('ไม่พบผู้ใช้') && (
+                <span>
+                  {' '}
+                  <a href="/register" className="register-link">
+                    สมัครสมาชิก
+                  </a>
+                </span>
+              )}
+              {error.includes('รหัสผ่านไม่ถูกต้อง') && (
+                <span>
+                  {' '}
+                  <a href="/forgotpassword" className="forgot-password-link">
+                    ลืมรหัสผ่าน?
+                  </a>
+                </span>
+              )}
+            </p>
+          )}
         <button type="submit" disabled={loading}>
           {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
         </button>
       </form>
-      <p>
-        ยังไม่มีบัญชี? <a href="/register">สมัครสมาชิก</a>
+      <p className="auth-links">
+        ยังไม่มีบัญชี? <a href="/register">สมัครสมาชิก</a> |{' '}
+        <a href="/forgotpassword" className="forgot-password-link">
+          ลืมรหัสผ่าน?
+        </a>
       </p>
     </div>
   );

@@ -8,6 +8,8 @@ const ProductSchema = new Schema({
   description: { type: String },
   product_image_urls: [{ type: String }],
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
+  stock: { type: Number, required: true, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -29,7 +31,9 @@ const UserSchema = new Schema({
   fname: { type: String, required: true },
   lname: { type: String, required: true },
   role: { type: String, enum: ['admin', 'seller'], default: 'seller' },
-  profile_image_url: { type: String }
+  profile_image_url: { type: String },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 });
 
 // Schema สำหรับ Report
@@ -41,9 +45,17 @@ const ReportSchema = new Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+// models/product_config.js (เพิ่ม CategorySchema)
+const CategorySchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Category = mongoose.model('Category', CategorySchema);
 const Product = mongoose.model('Product', ProductSchema);
 const Order = mongoose.model('Order', OrderSchema);
 const User = mongoose.model('User', UserSchema);
 const Report = mongoose.model('Report', ReportSchema);
 
-module.exports = { Product, Order, User, Report };
+module.exports = { Product, Order, User, Report, Category };

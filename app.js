@@ -1,3 +1,4 @@
+// server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -19,7 +20,9 @@ const {
   updateUserProfile,
   updateUser,
   deleteUser,
-  getUsers
+  getUsers,
+  resetPassword,
+  resetPasswordConfirm
 } = require('./controller/user_config');
 
 const {
@@ -43,6 +46,7 @@ const {
   getReports,
   updateReport,
 } = require('./controller/reportController');
+const { getCategories, createCategory, deleteCategory, updateCategory } = require('./controller/categoryController');
 
 require('./models/product_config');
 
@@ -125,6 +129,8 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Routes - User
 app.post('/register', jsonParser, registerUser);
 app.post('/login', jsonParser, loginUser);
+app.post('/resetpassword', resetPassword);
+app.post('/resetpassword/confirm', resetPasswordConfirm);
 app.post('/authen', jsonParser, authMiddleware, authenticate);
 app.get('/protected', authMiddleware, protectedRoute);
 app.post('/logout', jsonParser, logoutUser);
@@ -134,6 +140,7 @@ app.put('/user/profile', authMiddleware, uploadProfile.single('profile_image'), 
 app.get('/users', authMiddleware, getUsers);
 app.put('/users/:userId', authMiddleware, jsonParser, updateUser);
 app.delete('/users/:userId', authMiddleware, deleteUser);
+
 
 // Product Routes
 app.post('/product/upload', authMiddleware, uploadProductImages, multerErrorHandler, uploadProduct);
@@ -149,10 +156,16 @@ app.delete('/orders/:orderId', authMiddleware, deleteOrder);
 app.get('/orders/report', authMiddleware, getOrderReport);
 app.get('/orders/seller', authMiddleware, getSellerOrderReport);
 
-//Report Routes
+// Report Routes
 app.post('/reports', authMiddleware, createReport);
 app.get('/reports', authMiddleware, getReports);
 app.put('/reports/:reportId', authMiddleware, updateReport);
+
+// Category Routes
+app.post('/categories', authMiddleware, createCategory);
+app.get('/categories', authMiddleware, getCategories);
+app.put('/categories/:categoryId', authMiddleware, updateCategory);
+app.delete('/categories/:categoryId', authMiddleware, deleteCategory);
 
 const PORT = 3333;
 app.listen(PORT, () => {

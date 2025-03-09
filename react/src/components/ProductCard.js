@@ -1,23 +1,22 @@
 import React from 'react';
 
-function ProductCard({ product }) {
-  const imageUrl = product.product_image_urls && product.product_image_urls.length > 0 
-    ? product.product_image_urls[0] 
-    : './default-product.png';
-  
-  console.log('Rendering ProductCard', { productName: product.name, imageUrl });
-
+const ProductCard = ({ product }) => {
   return (
-    <div className="product-card">
-      <img src={imageUrl} alt={product.name} onError={(e) => {
-        console.error('Image failed to load', { url: imageUrl });
-        e.target.src = './default-product.png'; // Fallback ถ้าภาพไม่โหลด
-      }} />
+    <div className="product-card" style={{ overflow: 'hidden', maxHeight: '100%' }}>
+      {product.product_image_urls && product.product_image_urls.length > 0 ? (
+        <img src={product.product_image_urls[0]} alt={product.name} style={{ maxHeight: '150px', objectFit: 'cover' }} />
+      ) : (
+        <img src="https://via.placeholder.com/150" alt="No Image" style={{ maxHeight: '150px', objectFit: 'cover' }} />
+      )}
       <h3>{product.name}</h3>
-      <p>ราคา: {product.price} บาท</p>
-      <p>{product.description}</p>
+      <p className="category">หมวดหมู่: {product.category ? product.category.name : 'ไม่ระบุ'}</p>
+      <p className={`stock ${product.stock < 5 ? 'low' : 'normal'}`}>
+        สต็อก: {product.stock || 0}
+      </p>
+      <p>ราคา: {new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(product.price || 0)}</p>
+      <p>{product.description || 'ไม่มีคำอธิบาย'}</p>
     </div>
   );
-}
+};
 
 export default ProductCard;

@@ -9,6 +9,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { Product, Order } = require('../models/product_config');
 const { User} = require('../models/product_config');
 const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
 
 const salt = bcrypt.genSaltSync(10);
 const secret = process.env.JWT_SECRET || 'Nut150945';
@@ -49,6 +50,79 @@ const upload = multer({
   }
 }).single('profile_image');
 
+const resetPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // ค้นหาผู้ใช้
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
+    }
+
+    // สร้าง token
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '10m' });
+
+    // บันทึก token และวันหมดอายุ
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 นาที
+    await user.save();
+
+    // ตั้งค่า Nodemailer
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'รีเซ็ตรหัสผ่าน',
+      text: `คลิกลิงก์นี้เพื่อรีเซ็ตรหัสผ่านของคุณ: http://localhost:3000/resetpassword/${token}`,
+    };
+
+    transporter.sendMail(mailOptions, (error) => {
+      if (error) {
+        console.error('Error sending email:', error);
+        return res.status(500).json({ status: 'error', message: 'ไม่สามารถส่งอีเมลได้' });
+      }
+      res.json({ status: 'OK', message: 'ลิงก์รีเซ็ตรหัสผ่านถูกส่งไปยังอีเมลของคุณแล้ว' });
+    });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในระบบ', error: err.message });
+  }
+};
+
+const resetPasswordConfirm = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // ค้นหาผู้ใช้ด้วย token และตรวจสอบวันหมดอายุ
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ status: 'error', message: 'Token ไม่ถูกต้องหรือหมดอายุ' });
+    }
+
+    // อัปเดตรหัสผ่าน
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ status: 'OK', message: 'รีเซ็ตรหัสผ่านสำเร็จ' });
+  } catch (err) {
+    console.error('Reset password confirm error:', err);
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในระบบ', error: err.message });
+  }
+};
 
 // Register User
 const registerUser = async (req, res) => {
@@ -337,5 +411,7 @@ module.exports = {
   updateUserProfile,
   getUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  resetPassword,
+  resetPasswordConfirm
 };

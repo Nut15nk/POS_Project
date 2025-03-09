@@ -65,6 +65,9 @@ function Navbar({ user, onLogout, onEditProfile }) {
                 <li onClick={() => handleNavigation('/viewreports')}>
                   ดูรายงานปัญหา
                 </li>
+                <li onClick={() => handleNavigation('/categorymanagement')}>
+                  จัดการหมวดหมู่
+                </li>
               </>
             )}
           </ul>

@@ -1,13 +1,11 @@
-//controller/productController.js
-
 const { Product } = require('../models/product_config');
 const cloudinary = require('cloudinary').v2;
 
 const uploadProduct = async (req, res) => {
   try {
-    const { name, price, description } = req.body;
-    if (!name || !price || !description) {
-      return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อ, ราคา, และรายละเอียดสินค้า' });
+    const { name, price, description, category, stock } = req.body;
+    if (!name || !price || !description || !category || !stock) {
+      return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อ, ราคา, รายละเอียด, หมวดหมู่ และสต็อก' });
     }
 
     if (!req.files || req.files.length === 0) {
@@ -32,6 +30,8 @@ const uploadProduct = async (req, res) => {
       name,
       price: parseFloat(price),
       description,
+      stock: parseInt(stock) || 0,
+      category: category, // ต้องเป็น ObjectId ของ Category
       product_image_urls: productImageUrls,
       createdBy: req.user.id
     });
@@ -46,6 +46,8 @@ const uploadProduct = async (req, res) => {
         name: savedProduct.name,
         price: savedProduct.price,
         description: savedProduct.description,
+        category: savedProduct.category,
+        stock: savedProduct.stock,
         product_image_urls: savedProduct.product_image_urls
       }
     });
@@ -94,11 +96,9 @@ const deleteProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { name, price, description, deletedImages } = req.body;
+    const { name, price, description, category, stock, deletedImages } = req.body;
     const userId = req.user.id;
     const role = req.user.role;
-
-    console.log('Received deletedImages:', deletedImages); // ดีบัก
 
     const product = await Product.findById(productId);
     if (!product) {
@@ -113,6 +113,8 @@ const updateProduct = async (req, res) => {
     if (name) updateData.name = name;
     if (price) updateData.price = parseFloat(price);
     if (description) updateData.description = description;
+    if (category) updateData.category = category; // ต้องเป็น ObjectId ของ Category
+    if (stock) updateData.stock = parseInt(stock);
 
     let updatedImageUrls = [...(product.product_image_urls || [])];
 
@@ -135,7 +137,6 @@ const updateProduct = async (req, res) => {
 
         if (publicIds.length > 0) {
           await cloudinary.api.delete_resources(publicIds);
-          console.log('Deleted images from Cloudinary:', publicIds); // ดีบัก
         }
 
         updatedImageUrls = updatedImageUrls.filter(url => !imagesToDelete.includes(url));
@@ -170,6 +171,8 @@ const updateProduct = async (req, res) => {
         name: updatedProduct.name,
         price: updatedProduct.price,
         description: updatedProduct.description,
+        category: updatedProduct.category,
+        stock: updatedProduct.stock,
         product_image_urls: updatedProduct.product_image_urls
       }
     });
@@ -181,19 +184,24 @@ const updateProduct = async (req, res) => {
 
 const getProducts = async (req, res) => {
   try {
-    if (!req.user || !req.user.id || !req.user.role) {
-      return res.status(401).json({ status: 'error', message: 'ไม่พบข้อมูลผู้ใช้ใน request' });
+    // ตรวจสอบ req.user ก่อนใช้งาน
+    if (!req.user) {
+      return res.status(401).json({ status: 'error', message: 'ไม่มีการระบุผู้ใช้ใน request' });
     }
 
     const userId = req.user.id;
     const role = req.user.role;
+    const categoryId = req.query.category; // รับ categoryId จาก query parameter
 
-    let products;
-    if (role === 'admin') {
-      products = await Product.find().populate('createdBy', 'email fname lname');
-    } else {
-      products = await Product.find({ createdBy: userId }).populate('createdBy', 'email fname lname');
+    let productsQuery = Product.find().populate('createdBy', 'email fname lname').populate('category', 'name'); // Populate category ด้วย
+    if (role !== 'admin') {
+      productsQuery = productsQuery.where('createdBy', userId);
     }
+    if (categoryId) {
+      productsQuery = productsQuery.where('category', categoryId);
+    }
+
+    const products = await productsQuery.exec();
 
     if (!products || products.length === 0) {
       return res.status(200).json({ status: 'OK', message: 'ไม่พบสินค้า', products: [] });
@@ -202,23 +210,36 @@ const getProducts = async (req, res) => {
     const response = {
       status: 'OK',
       message: 'ดึงข้อมูลสินค้าสำเร็จ',
-      products: products.map(product => ({
-        id: product._id.toString(),
-        name: product.name,
-        price: product.price,
-        description: product.description,
-        product_image_urls: product.product_image_urls || [],
-        createdBy: product.createdBy && product.createdBy._id ? {
+      products: products.map(product => {
+        // ตรวจสอบและจัดการค่า undefined
+        const productId = product._id ? product._id.toString() : null;
+        const createdBy = product.createdBy && product.createdBy._id ? {
           id: product.createdBy._id.toString(),
           email: product.createdBy.email || 'ไม่ระบุ',
           fname: product.createdBy.fname || 'ไม่ระบุ',
           lname: product.createdBy.lname || ''
-        } : { id: null, email: 'ไม่ระบุ', fname: 'ไม่ระบุ', lname: '' },
-        createdAt: product.createdAt
-      }))
+        } : { id: null, email: 'ไม่ระบุ', fname: 'ไม่ระบุ', lname: '' };
+        const category = product.category ? {
+          id: product.category._id ? product.category._id.toString() : null,
+          name: product.category.name || 'ไม่ระบุ'
+        } : null;
+
+        return {
+          id: productId,
+          name: product.name || 'ไม่ระบุ',
+          price: product.price || 0,
+          description: product.description || 'ไม่ระบุ',
+          category: category,
+          stock: product.stock || 0,
+          product_image_urls: product.product_image_urls || [],
+          createdBy: createdBy,
+          createdAt: product.createdAt
+        };
+      })
     };
     res.json(response);
   } catch (err) {
+    console.error('Error in getProducts:', err); // เก็บ log ข้อผิดพลาด
     res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า', error: err.message });
   }
 };

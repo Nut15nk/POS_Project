@@ -12,7 +12,8 @@ import {
   getProfile,
   updateProfile,
   setAuthToken,
-  createReport // เพิ่ม API สำหรับส่งรายงาน
+  createReport,
+  getCategories
 } from '../api';
 import ProductCard from './ProductCard';
 import defaultAvatar from './default-avatar.png';
@@ -30,8 +31,9 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [currentUser, setCurrentUser] = useState(user);
   const [isSaving, setIsSaving] = useState(false);
   const [deletedImages, setDeletedImages] = useState([]);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false); // State สำหรับ Modal รายงาน
-  const [reportMessage, setReportMessage] = useState(''); // ข้อความรายงาน
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportMessage, setReportMessage] = useState('');
+  const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
 
   const fetchData = async (userRole) => {
@@ -45,29 +47,41 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     setLoading(true);
     setError('');
     try {
-      const [productRes, orderRes, profileRes] = await Promise.all([
+      const [productRes, orderRes, profileRes, categoryRes] = await Promise.all([
         getProducts(),
         userRole === 'admin' ? getOrderReport() : getSellerOrders(),
-        getProfile()
+        getProfile(),
+        getCategories()
       ]);
 
-      console.log('Order Response:', orderRes); // ดีบักข้อมูลจาก API
+      console.log('Product Response (Raw):', productRes);
 
       const myId = profileRes.user._id || profileRes.user.id;
       if (!myId) throw new Error('ไม่พบ ID ผู้ใช้จากโปรไฟล์');
 
-      const myProds = productRes.products.filter(p => 
+      const cleanProducts = Array.isArray(productRes.products) 
+        ? productRes.products.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            description: p.description,
+            stock: p.stock || 0,
+            category: p.category || null, // เปลี่ยนจาก string เป็น object { id, name }
+            product_image_urls: p.product_image_urls || [p.product_image_url] || [],
+            createdBy: p.createdBy
+          }))
+        : [];
+
+      const myProds = cleanProducts.filter(p => 
         p.createdBy && p.createdBy.id && p.createdBy.id.toString() === myId.toString()
       ) || [];
       setMyProducts(myProds);
 
-      // สำหรับ Admin เพิ่มการแสดงสินค้าของผู้ขายอื่น
-      const othersProds = userRole === 'admin' ? productRes.products.filter(p => 
+      const othersProds = userRole === 'admin' ? cleanProducts.filter(p => 
         p.createdBy && p.createdBy.id && p.createdBy.id.toString() !== myId.toString()
       ) || [] : [];
       setOthersProducts(othersProds);
 
-      // ตรวจสอบและจัดการข้อมูล orders
       let processedOrders = orderRes;
       if (orderRes && typeof orderRes === 'object') {
         processedOrders = {
@@ -95,6 +109,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       setOrders(processedOrders);
       setCurrentUser(profileRes.user || user);
       updateUser(profileRes.user || user);
+      setCategories(categoryRes.categories || []);
 
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
@@ -154,7 +169,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   const handleAddProduct = () => {
-    setNewProduct({ name: '', price: '', description: '', newImages: [], previewImages: [] });
+    setNewProduct({ name: '', price: '', description: '', category: '', stock: 0, newImages: [], previewImages: [] });
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) fileInput.value = '';
   };
@@ -167,6 +182,8 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       formData.append('name', editProduct.name);
       formData.append('price', editProduct.price);
       formData.append('description', editProduct.description);
+      formData.append('category', editProduct.category ? editProduct.category.id : ''); // ส่ง category.id
+      formData.append('stock', editProduct.stock);
       if (editProduct.newImages && editProduct.newImages.length > 0) {
         editProduct.newImages.forEach((image) => {
           formData.append('product_images', image);
@@ -198,6 +215,8 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       formData.append('name', newProduct.name);
       formData.append('price', newProduct.price);
       formData.append('description', newProduct.description);
+      formData.append('category', newProduct.category ? newProduct.category.id : ''); // ส่ง category.id
+      formData.append('stock', newProduct.stock);
       if (newProduct.newImages && newProduct.newImages.length > 0) {
         newProduct.newImages.forEach((image) => {
           formData.append('product_images', image);
@@ -300,6 +319,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   const handleProductClick = (product) => {
+    console.log('Selected Product:', product);
     setSelectedProduct(product);
   };
 
@@ -319,13 +339,11 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   const handleCloseGallery = (e) => {
-    // ปิด modal เมื่อคลิกนอกเหนือจาก modal-content
     if (e.target.className.includes('image-gallery-modal')) {
       setSelectedProduct(null);
     }
   };
 
-  // ฟังก์ชันสำหรับส่งรายงาน
   const handleSubmitReport = async () => {
     if (!reportMessage.trim()) {
       setError('กรุณากรอกข้อความรายงาน');
@@ -342,7 +360,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   return (
-    <div className="dashboard">
+    <div className="dashboard" style={{ overflow: 'hidden' }}>
       {loading && (
         <div className="loading-overlay">
           <div className="loading">กำลังโหลด...</div>
@@ -365,19 +383,22 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
           <h2>สินค้าของคุณ</h2>
           <span className="icon-add" onClick={handleAddProduct}>+</span>
         </div>
-        <div className="product-list">
+        <div className="product-list" style={{ overflow: 'hidden', maxHeight: 'none' }}>
           {myProducts.length > 0 ? (
-            myProducts.map((product) => (
-              <div key={product.id} className="product-item">
-                <div onClick={() => handleProductClick(product)}>
-                  <ProductCard product={product} />
+            myProducts.map((product) => {
+              console.log('Product sent to ProductCard:', product);
+              return (
+                <div key={product.id} className="product-item">
+                  <div onClick={() => handleProductClick(product)}>
+                    <ProductCard product={product} />
+                  </div>
+                  <div className="product-actions">
+                    <span className="icon-edit" onClick={() => handleEditProduct(product)} />
+                    <span className="icon-delete" onClick={() => handleDeleteProduct(product.id)} />
+                  </div>
                 </div>
-                <div className="product-actions">
-                  <span className="icon-edit" onClick={() => handleEditProduct(product)} />
-                  <span className="icon-delete" onClick={() => handleDeleteProduct(product.id)} />
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <p>ไม่มีสินค้า</p>
           )}
@@ -403,6 +424,25 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 value={editProduct.description}
                 onChange={(e) => setEditProduct({ ...editProduct, description: e.target.value })}
                 placeholder="คำอธิบาย"
+              />
+              <select
+                value={editProduct.category ? editProduct.category.id : ''}
+                onChange={(e) => {
+                  const selectedCategory = categories.find(cat => cat.id === e.target.value);
+                  setEditProduct({ ...editProduct, category: selectedCategory || null });
+                }}
+              >
+                <option value="">เลือกหมวดหมู่</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={editProduct.stock || 0}
+                onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
+                placeholder="จำนวนสต็อก"
+                min="0"
               />
               <input type="file" accept="image/*" onChange={handleImageChange} />
               {editProduct.previewImages && editProduct.previewImages.length > 0 && (
@@ -453,6 +493,25 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
                 placeholder="คำอธิบาย"
               />
+              <select
+                value={newProduct.category ? newProduct.category.id : ''}
+                onChange={(e) => {
+                  const selectedCategory = categories.find(cat => cat.id === e.target.value);
+                  setNewProduct({ ...newProduct, category: selectedCategory || null });
+                }}
+              >
+                <option value="">เลือกหมวดหมู่</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={newProduct.stock || 0}
+                onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                placeholder="จำนวนสต็อก"
+                min="0"
+              />
               <input type="file" accept="image/*" onChange={handleImageChange} />
               {newProduct.previewImages && newProduct.previewImages.length > 0 && (
                 <div className="image-preview-container">
@@ -485,6 +544,10 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
           <div className="modal image-gallery-modal" onClick={handleCloseGallery}>
             <div className="modal-content image-gallery-content" onClick={(e) => e.stopPropagation()}>
               <h3>{selectedProduct.name}</h3>
+              <p className="category">หมวดหมู่: {selectedProduct.category ? selectedProduct.category.name : 'ไม่ระบุ'}</p>
+              <p className={`stock ${selectedProduct.stock < 5 ? 'low' : 'normal'}`}>
+                สต็อก: {selectedProduct.stock || 0}
+              </p>
               <div className="image-gallery">
                 {(selectedProduct.product_image_urls || [selectedProduct.product_image_url] || []).map((img, index) => (
                   <img key={index} src={img} alt={`${selectedProduct.name} ${index}`} className="gallery-image" />
@@ -501,7 +564,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       {user.role === 'admin' && (
         <section className="others-products">
           <h2>สินค้าของผู้ขายอื่น</h2>
-          <div className="product-list">
+          <div className="product-list" style={{ overflow: 'hidden', maxHeight: 'none' }}>
             {othersProducts.length > 0 ? (
               othersProducts.map((product) => (
                 <div key={product.id} className="product-item">
@@ -682,14 +745,12 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
         </div>
       )}
 
-      {/* เพิ่มปุ่มแชทสำหรับ Seller */}
       {user.role === 'seller' && (
         <div className="chat-button" onClick={() => setIsReportModalOpen(true)}>
           💬 รายงานปัญหา
         </div>
       )}
 
-      {/* Modal สำหรับรายงานปัญหา */}
       {isReportModalOpen && user.role === 'seller' && (
         <div className="modal">
           <div className="modal-content">

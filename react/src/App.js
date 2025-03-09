@@ -1,4 +1,3 @@
-// frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { setAuthToken, getProfile } from './api';
@@ -8,6 +7,9 @@ import Dashboard from './components/Dashboard';
 import UserManagement from './components/UserManagement';
 import ViewReports from './components/ViewReports';
 import Navbar from './components/Navbar';
+import CategoryManagement from './components/CategoryManagement';
+import ForgotPassword from './components/ForgotPassword'; // เพิ่มหน้า ForgotPassword
+import ResetPassword from './components/ResetPassword'; // เพิ่มหน้า ResetPassword
 
 function App() {
   const [user, setUser] = useState(null);
@@ -25,7 +27,6 @@ function App() {
           setUser(res.user);
         } else {
           setUser(null);
-          // ไม่ redirect ทันที ปล่อยให้ผู้ใช้เลือกไป /login หรือ /register
         }
       } catch (err) {
         console.error('CheckAuth Error:', err);
@@ -75,7 +76,15 @@ function App() {
         />
         <Route
           path="/register"
-          element={<Register setUser={setUser} />}
+          element={!user ? <Register setUser={setUser} /> : <Navigate to="/dashboard" />}
+        />
+        <Route
+          path="/forgotpassword"
+          element={!user ? <ForgotPassword /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/resetpassword/:token"
+          element={!user ? <ResetPassword /> : <Navigate to="/login" />}
         />
         <Route
           path="/dashboard"
@@ -107,6 +116,16 @@ function App() {
           element={
             user && user.role === 'admin' ? (
               <ViewReports />
+            ) : (
+              <Navigate to="/dashboard" />
+            )
+          }
+        />
+        <Route
+          path="/categorymanagement"
+          element={
+            user && user.role === 'admin' ? (
+              <CategoryManagement user={user} />
             ) : (
               <Navigate to="/dashboard" />
             )
