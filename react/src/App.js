@@ -1,9 +1,12 @@
+// frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { setAuthToken, getProfile } from './api';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
+import UserManagement from './components/UserManagement';
+import ViewReports from './components/ViewReports';
 import Navbar from './components/Navbar';
 
 function App() {
@@ -17,12 +20,12 @@ function App() {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          setAuthToken(token); // ตั้งค่า token ก่อนเรียก API
+          setAuthToken(token);
           const res = await getProfile();
           setUser(res.user);
         } else {
           setUser(null);
-          navigate('/login');
+          // ไม่ redirect ทันที ปล่อยให้ผู้ใช้เลือกไป /login หรือ /register
         }
       } catch (err) {
         console.error('CheckAuth Error:', err);
@@ -72,7 +75,7 @@ function App() {
         />
         <Route
           path="/register"
-          element={!user ? <Register /> : <Navigate to="/dashboard" />}
+          element={<Register setUser={setUser} />}
         />
         <Route
           path="/dashboard"
@@ -86,6 +89,26 @@ function App() {
               />
             ) : (
               <Navigate to="/login" />
+            )
+          }
+        />
+        <Route
+          path="/usermanagement"
+          element={
+            user && user.role === 'admin' ? (
+              <UserManagement user={user} />
+            ) : (
+              <Navigate to="/dashboard" />
+            )
+          }
+        />
+        <Route
+          path="/viewreports"
+          element={
+            user && user.role === 'admin' ? (
+              <ViewReports />
+            ) : (
+              <Navigate to="/dashboard" />
             )
           }
         />

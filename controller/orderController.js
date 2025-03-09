@@ -1,5 +1,5 @@
 // controller/orderController.js
-const { Order, Product } = require('./product_config');
+const { Order, Product } = require('../models/product_config');
 
 const createOrder = async (req, res) => {
   try {

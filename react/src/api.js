@@ -106,4 +106,31 @@ export const uploadProfileImage = async (formData) => {
   return response.data;
 };
 
+export const getUsers = async () => {
+  const response = await api.get('/users');
+  return response.data;
+};
+
+export const deleteUser = async (userId) => {
+  const response = await api.delete(`/users/${userId}`);
+  return response.data;
+};
+
+export const createReport = async (message) => {
+  const response = await api.post('/reports', { message });
+  return response.data;
+};
+
+// เพิ่มฟังก์ชันสำหรับดึงรายการรายงาน
+export const getReports = async () => {
+  const response = await api.get('/reports');
+  return response.data;
+};
+
+// เพิ่มฟังก์ชันสำหรับอัปเดตสถานะรายงาน
+export const updateReport = async (reportId, status) => {
+  const response = await api.put(`/reports/${reportId}`, { status });
+  return response.data;
+};
+
 export { setAuthToken }; // Export เพื่อให้ component เรียกใช้ได้

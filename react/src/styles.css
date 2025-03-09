@@ -28,7 +28,6 @@ body {
   --light-bg: #ffffff;
   --border-color: #e0e0e0;
 }
-
 /* Navbar */
 .navbar {
   display: flex;
@@ -41,34 +40,167 @@ body {
   margin-bottom: 20px;
 }
 
-.navbar h3 {
-  font-size: 1.5rem;
-  color: var(--primary-color);
-}
-
-.navbar div {
+.navbar-left {
   display: flex;
   align-items: center;
   gap: 15px;
 }
 
-.navbar span {
-  font-weight: 500;
+.menu-icon {
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--primary-color);
 }
 
-.navbar button {
-  background-color: var(--danger-color);
-  padding: 8px 15px;
-  border-radius: 5px;
-  font-size: 0.9rem;
-  color: white;
-  border: none;
+.navbar h3 {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 250px;
+  height: 100%;
+  background-color: var(--light-bg);
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  z-index: 1000;
+  transition: transform 0.3s ease-in-out;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.close-icon {
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--danger-color);
+}
+
+.sidebar-menu {
+  list-style: none;
+  margin-top: 20px;
+}
+
+.sidebar-menu li {
+  padding: 15px 20px;
+  font-size: 1.1rem;
+  color: var(--secondary-color);
   cursor: pointer;
   transition: background-color 0.3s;
 }
 
-.navbar button:hover {
-  background-color: #c82333;
+.sidebar-menu li:hover {
+  background-color: #f1f3f5;
+  color: var(--primary-color);
+}
+
+/* User Management */
+.user-management {
+  background-color: var(--light-bg);
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin: 0 20px;
+}
+
+.user-management h1 {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+/* Search Bar */
+.search-bar {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.search-bar input {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 15px;
+  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.search-bar input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* User List */
+.user-list table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--light-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.user-list th,
+.user-list td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-list th {
+  background-color: #f8f9fa;
+  color: var(--secondary-color);
+  font-weight: 600;
+}
+
+.user-list td {
+  font-size: 0.9rem;
+}
+
+.user-list tr:hover {
+  background-color: #f1f3f5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .user-management {
+    padding: 20px;
+  }
+  .user-management h1 {
+    font-size: 1.5rem;
+  }
+  .search-bar input {
+    width: 100%;
+    max-width: 300px;
+  }
+  .user-list table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-management {
+    padding: 15px;
+    margin: 0 10px;
+  }
+  .user-management h1 {
+    font-size: 1.3rem;
+  }
+  .search-bar input {
+    max-width: 250px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
 }
 
 /* Auth Pages (Login & Register) */
@@ -451,11 +583,65 @@ tr:hover {
 }
 
 /* Loading State */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
 .loading {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.error-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.error-modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
   text-align: center;
-  padding: 50px;
-  font-size: 1.2rem;
-  color: var(--secondary-color);
+}
+
+.error-modal-content h3 {
+  color: #d32f2f;
+  margin-bottom: 10px;
+}
+
+.error-modal-content button {
+  margin-top: 15px;
+  padding: 8px 16px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.error-modal-content button:hover {
+  background: #1565c0;
 }
 
 /* ไอคอนแก้ไขและลบ */
@@ -824,4 +1010,234 @@ tr:hover {
     padding: 8px;
     font-size: 0.85rem;
   }
+}
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.image-preview {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+/* Image Preview ใน Modal */
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.image-preview-item {
+  position: relative;
+  display: inline-block;
+}
+
+.image-preview {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.remove-image {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  background-color: var(--danger-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.remove-image:hover {
+  background-color: #c82333;
+}
+
+/* Image Gallery Modal */
+.image-gallery-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.image-gallery-content {
+  background-color: var(--light-bg);
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  text-align: center;
+}
+
+.image-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.gallery-image {
+  max-width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+/* frontend/src/App.css */
+
+/* ปุ่มแชท */
+.chat-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.chat-button:hover {
+  background-color: #0056b3;
+}
+
+/* Modal สำหรับรายงานปัญหา */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 90%;
+  max-width: 500px;
+}
+
+.modal-content textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.modal-actions button:first-child {
+  background-color: #007bff;
+  color: white;
+}
+
+.modal-actions button:last-child {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* frontend/src/App.css */
+
+/* หน้า ViewReports */
+.view-reports {
+  padding: 20px;
+}
+
+.view-reports h1 {
+  margin-bottom: 20px;
+}
+
+.view-reports table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.view-reports th,
+.view-reports td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.view-reports th {
+  background-color: #f4f4f4;
+}
+
+.view-reports .status-badge {
+  padding: 5px 10px;
+  border-radius: 12px;
+  color: white;
+}
+
+.view-reports .status-pending {
+  background-color: #ff9800;
+}
+
+.view-reports .status-resolved {
+  background-color: #4caf50;
+}
+
+.view-reports button {
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.view-reports button:hover {
+  background-color: #0056b3;
 }

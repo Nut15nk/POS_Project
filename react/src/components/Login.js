@@ -15,8 +15,12 @@ function Login({ setUser }) {
     setError('');
 
     try {
+      console.log('Attempting login with:', { email, password });
+
       // เรียก API login
       const loginRes = await login(email, password);
+      console.log('Login response:', loginRes);
+
       if (loginRes.status !== 'OK') {
         throw new Error(loginRes.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
       }
@@ -29,9 +33,12 @@ function Login({ setUser }) {
       // ตั้งค่า token
       setAuthToken(token);
       localStorage.setItem('token', token);
+      console.log('Token set:', token);
 
       // ดึงข้อมูลโปรไฟล์
       const profileRes = await getProfile();
+      console.log('Profile response:', profileRes);
+
       if (profileRes.status !== 'OK') {
         throw new Error(profileRes.message || 'ไม่สามารถดึงข้อมูลโปรไฟล์ได้');
       }
@@ -46,7 +53,8 @@ function Login({ setUser }) {
       navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
-      const errorMessage = err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+      // ดึงข้อความ error จาก backend
+      const errorMessage = err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
       setError(errorMessage);
       // ล้าง token ถ้ามี error
       setAuthToken(null);

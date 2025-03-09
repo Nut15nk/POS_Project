@@ -11,9 +11,11 @@ import {
   uploadProduct,
   getProfile,
   updateProfile,
-  setAuthToken 
+  setAuthToken,
+  createReport // เพิ่ม API สำหรับส่งรายงาน
 } from '../api';
 import ProductCard from './ProductCard';
+import defaultAvatar from './default-avatar.png';
 
 function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [myProducts, setMyProducts] = useState([]);
@@ -24,13 +26,16 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [editProduct, setEditProduct] = useState(null);
   const [editOrder, setEditOrder] = useState(null);
   const [newProduct, setNewProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [currentUser, setCurrentUser] = useState(user);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletedImages, setDeletedImages] = useState([]);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false); // State สำหรับ Modal รายงาน
+  const [reportMessage, setReportMessage] = useState(''); // ข้อความรายงาน
   const navigate = useNavigate();
 
-  const fetchData = async () => {
+  const fetchData = async (userRole) => {
     const token = localStorage.getItem('token');
-    console.log('Token in fetchData:', token);
     if (!token) {
       navigate('/login');
       return;
@@ -42,43 +47,59 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     try {
       const [productRes, orderRes, profileRes] = await Promise.all([
         getProducts(),
-        user.role === 'admin' ? getOrderReport() : getSellerOrders(),
+        userRole === 'admin' ? getOrderReport() : getSellerOrders(),
         getProfile()
       ]);
 
-      console.log('Product Response:', productRes);
-      console.log('Order Response:', orderRes);
-      console.log('Profile Response:', profileRes);
+      console.log('Order Response:', orderRes); // ดีบักข้อมูลจาก API
 
-      if (productRes.status !== 'OK') throw new Error(productRes.message);
-      if (orderRes.status !== 'OK') throw new Error(orderRes.message);
-      if (profileRes.status !== 'OK') throw new Error(profileRes.message);
-
-      // ดึง ID ผู้ใช้จาก profile
       const myId = profileRes.user._id || profileRes.user.id;
-      console.log('My User ID:', myId);
+      if (!myId) throw new Error('ไม่พบ ID ผู้ใช้จากโปรไฟล์');
 
-      // กรองสินค้าที่ตัวเองสร้าง (createdBy.id ต้องตรงกับ myId)
       const myProds = productRes.products.filter(p => 
-        p.createdBy && p.createdBy.id.toString() === myId.toString()
-      );
+        p.createdBy && p.createdBy.id && p.createdBy.id.toString() === myId.toString()
+      ) || [];
+      setMyProducts(myProds);
 
-      // กรองสินค้าที่คนอื่นสร้าง (createdBy.id ไม่ตรงกับ myId)
-      const othersProds = productRes.products.filter(p => 
-        p.createdBy && p.createdBy.id.toString() !== myId.toString()
-      );
+      // สำหรับ Admin เพิ่มการแสดงสินค้าของผู้ขายอื่น
+      const othersProds = userRole === 'admin' ? productRes.products.filter(p => 
+        p.createdBy && p.createdBy.id && p.createdBy.id.toString() !== myId.toString()
+      ) || [] : [];
+      setOthersProducts(othersProds);
 
-      console.log('My Products:', myProds);
-      console.log('Others Products:', othersProds);
+      // ตรวจสอบและจัดการข้อมูล orders
+      let processedOrders = orderRes;
+      if (orderRes && typeof orderRes === 'object') {
+        processedOrders = {
+          ...orderRes,
+          totalRevenue: orderRes.totalRevenue || 0,
+          dailyRevenue: orderRes.dailyRevenue || 0,
+          monthlyRevenue: orderRes.monthlyRevenue || 0,
+          completedOrders: orderRes.completedOrders || 0,
+          pendingOrders: orderRes.pendingOrders || 0,
+          statusSummary: orderRes.statusSummary || {},
+          orders: orderRes.orders || []
+        };
+      } else {
+        processedOrders = {
+          totalRevenue: 0,
+          dailyRevenue: 0,
+          monthlyRevenue: 0,
+          completedOrders: 0,
+          pendingOrders: 0,
+          statusSummary: {},
+          orders: []
+        };
+      }
 
-      setMyProducts(myProds || []);
-      setOthersProducts(othersProds || []);
-      setOrders(orderRes || {});
+      setOrders(processedOrders);
       setCurrentUser(profileRes.user || user);
       updateUser(profileRes.user || user);
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
       console.error('Fetch Error:', err);
-      setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      setError(err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
       if (err.response?.status === 401) {
         localStorage.removeItem('token');
         setAuthToken(null);
@@ -90,18 +111,18 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   useEffect(() => {
-    if (user?.role) {
-      fetchData();
-    } else {
+    if (!user?.role || !['seller', 'admin'].includes(user.role)) {
       navigate('/login');
+      return;
     }
+    fetchData(user.role);
   }, [user?.role, navigate]);
 
   const handleDeleteProduct = async (productId) => {
     if (window.confirm('ยืนยันการลบสินค้านี้?')) {
       try {
         await deleteProduct(productId);
-        fetchData();
+        fetchData(user.role);
       } catch (err) {
         setError('ไม่สามารถลบสินค้าได้: ' + (err.response?.data?.message || err.message));
       }
@@ -112,7 +133,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     if (window.confirm('ยืนยันการลบคำสั่งซื้อนี้?')) {
       try {
         await deleteOrder(orderId);
-        fetchData();
+        fetchData(user.role);
       } catch (err) {
         setError('ไม่สามารถลบคำสั่งซื้อได้: ' + (err.response?.data?.message || err.message));
       }
@@ -120,7 +141,12 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   const handleEditProduct = (product) => {
-    setEditProduct({ ...product });
+    setEditProduct({ 
+      ...product, 
+      previewImages: product.product_image_urls || [product.product_image_url] || [],
+      newImages: []
+    });
+    setDeletedImages([]);
   };
 
   const handleEditOrder = (order) => {
@@ -128,7 +154,9 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   const handleAddProduct = () => {
-    setNewProduct({ name: '', price: '', description: '', newImage: null });
+    setNewProduct({ name: '', price: '', description: '', newImages: [], previewImages: [] });
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) fileInput.value = '';
   };
 
   const handleSaveProduct = async () => {
@@ -139,13 +167,23 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       formData.append('name', editProduct.name);
       formData.append('price', editProduct.price);
       formData.append('description', editProduct.description);
-      if (editProduct.newImage) {
-        formData.append('product_image', editProduct.newImage);
+      if (editProduct.newImages && editProduct.newImages.length > 0) {
+        editProduct.newImages.forEach((image) => {
+          formData.append('product_images', image);
+        });
       }
-      await updateProduct(editProduct.id, formData);
+      if (deletedImages.length > 0) {
+        formData.append('deletedImages', JSON.stringify(deletedImages));
+        console.log('Sending deletedImages:', deletedImages);
+      }
+
+      const response = await updateProduct(editProduct.id, formData);
+      console.log('Update Product Response:', response);
       setEditProduct(null);
-      fetchData();
+      setDeletedImages([]);
+      fetchData(user.role);
     } catch (err) {
+      console.error('Update Product Error:', err);
       setError('ไม่สามารถแก้ไขสินค้าได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
@@ -160,12 +198,16 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       formData.append('name', newProduct.name);
       formData.append('price', newProduct.price);
       formData.append('description', newProduct.description);
-      if (newProduct.newImage) {
-        formData.append('product_image', newProduct.newImage);
+      if (newProduct.newImages && newProduct.newImages.length > 0) {
+        newProduct.newImages.forEach((image) => {
+          formData.append('product_images', image);
+        });
+      } else {
+        throw new Error('กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป');
       }
       await uploadProduct(formData);
       setNewProduct(null);
-      fetchData();
+      fetchData(user.role);
     } catch (err) {
       setError('ไม่สามารถเพิ่มสินค้าได้: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -179,7 +221,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     try {
       await updateOrder(editOrder.id, { status: editOrder.status });
       setEditOrder(null);
-      fetchData();
+      fetchData(user.role);
     } catch (err) {
       setError('ไม่สามารถแก้ไขคำสั่งซื้อได้: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -201,9 +243,8 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       setEditProfile(null);
       setCurrentUser(updatedProfile.user);
       updateUser(updatedProfile.user);
-      fetchData();
+      fetchData(user.role);
     } catch (err) {
-      console.error('Save profile error:', err);
       setError('ไม่สามารถแก้ไขโปรไฟล์ได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
@@ -212,12 +253,54 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      if (editProfile) setEditProfile({ ...editProfile, avatar: imageUrl, newImage: file });
-      if (editProduct) setEditProduct({ ...editProduct, avatar: imageUrl, newImage: file });
-      if (newProduct) setNewProduct({ ...newProduct, avatar: imageUrl, newImage: file });
+    if (!file) return;
+
+    const previewImage = URL.createObjectURL(file);
+
+    if (editProfile) {
+      setEditProfile({ ...editProfile, previewImage, newImage: file });
+    } else if (editProduct) {
+      setEditProduct({ 
+        ...editProduct, 
+        previewImages: [...editProduct.previewImages, previewImage], 
+        newImages: [...editProduct.newImages, file] 
+      });
+    } else if (newProduct) {
+      setNewProduct({ 
+        ...newProduct, 
+        previewImages: [...newProduct.previewImages, previewImage], 
+        newImages: [...newProduct.newImages, file] 
+      });
     }
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (index, context) => {
+    if (context === 'editProduct') {
+      const newPreviewImages = [...editProduct.previewImages];
+      const newImages = [...editProduct.newImages];
+      const removedImage = newPreviewImages[index];
+      const originalImageCount = editProduct.previewImages.length - editProduct.newImages.length;
+
+      newPreviewImages.splice(index, 1);
+      if (index >= originalImageCount) {
+        newImages.splice(index - originalImageCount, 1);
+      } else {
+        setDeletedImages(prev => [...prev, removedImage]);
+        console.log('Removed original image:', removedImage);
+      }
+      setEditProduct({ ...editProduct, previewImages: newPreviewImages, newImages });
+    } else if (context === 'newProduct') {
+      const newPreviewImages = [...newProduct.previewImages];
+      const newImages = [...newProduct.newImages];
+      newPreviewImages.splice(index, 1);
+      newImages.splice(index, 1);
+      setNewProduct({ ...newProduct, previewImages: newPreviewImages, newImages });
+    }
+  };
+
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
   };
 
   const formatDate = (dateString) => {
@@ -235,20 +318,48 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount || 0);
   };
 
-  if (loading) return <div className="loading">กำลังโหลด...</div>;
-  if (error) return <div className="error">{error}</div>;
+  const handleCloseGallery = (e) => {
+    // ปิด modal เมื่อคลิกนอกเหนือจาก modal-content
+    if (e.target.className.includes('image-gallery-modal')) {
+      setSelectedProduct(null);
+    }
+  };
+
+  // ฟังก์ชันสำหรับส่งรายงาน
+  const handleSubmitReport = async () => {
+    if (!reportMessage.trim()) {
+      setError('กรุณากรอกข้อความรายงาน');
+      return;
+    }
+    try {
+      await createReport(reportMessage);
+      setIsReportModalOpen(false);
+      setReportMessage('');
+      alert('ส่งรายงานปัญหาสำเร็จ');
+    } catch (err) {
+      setError('ไม่สามารถส่งรายงานได้: ' + (err.response?.data?.message || err.message));
+    }
+  };
 
   return (
     <div className="dashboard">
-      <h1>แดชบอร์ด {currentUser.role === 'admin' ? 'แอดมิน' : 'ผู้ขาย'}</h1>
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading">กำลังโหลด...</div>
+        </div>
+      )}
+      
+      <h1>แดชบอร์ด{user.role === 'admin' ? 'แอดมิน' : 'ผู้ขาย'}</h1>
       <div className="profile">
-        <img src={currentUser.profile_image_url || './default-avatar.png'} alt="Profile" />
+        <img 
+          src={currentUser.profile_image_url || defaultAvatar} 
+          alt="Profile" 
+        />
         <p>
           ยินดีต้อนรับ, {(currentUser.fname || 'ไม่ระบุชื่อ')} {(currentUser.lname || '')}
         </p>
       </div>
 
-      {/* สินค้าของตัวเอง */}
       <section className="products">
         <div className="products-header">
           <h2>สินค้าของคุณ</h2>
@@ -258,7 +369,9 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
           {myProducts.length > 0 ? (
             myProducts.map((product) => (
               <div key={product.id} className="product-item">
-                <ProductCard product={product} />
+                <div onClick={() => handleProductClick(product)}>
+                  <ProductCard product={product} />
+                </div>
                 <div className="product-actions">
                   <span className="icon-edit" onClick={() => handleEditProduct(product)} />
                   <span className="icon-delete" onClick={() => handleDeleteProduct(product.id)} />
@@ -292,6 +405,21 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 placeholder="คำอธิบาย"
               />
               <input type="file" accept="image/*" onChange={handleImageChange} />
+              {editProduct.previewImages && editProduct.previewImages.length > 0 && (
+                <div className="image-preview-container">
+                  {editProduct.previewImages.map((img, index) => (
+                    <div key={index} className="image-preview-item">
+                      <img src={img} alt={`Preview ${index}`} className="image-preview" />
+                      <span 
+                        className="remove-image" 
+                        onClick={() => handleRemoveImage(index, 'editProduct')}
+                      >
+                        ×
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="modal-actions">
                 <button onClick={handleSaveProduct} disabled={isSaving}>
                   {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
@@ -326,6 +454,21 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 placeholder="คำอธิบาย"
               />
               <input type="file" accept="image/*" onChange={handleImageChange} />
+              {newProduct.previewImages && newProduct.previewImages.length > 0 && (
+                <div className="image-preview-container">
+                  {newProduct.previewImages.map((img, index) => (
+                    <div key={index} className="image-preview-item">
+                      <img src={img} alt={`Preview ${index}`} className="image-preview" />
+                      <span 
+                        className="remove-image" 
+                        onClick={() => handleRemoveImage(index, 'newProduct')}
+                      >
+                        ×
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="modal-actions">
                 <button onClick={handleSaveNewProduct} disabled={isSaving}>
                   {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
@@ -337,23 +480,36 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
             </div>
           </div>
         )}
+
+        {selectedProduct && (
+          <div className="modal image-gallery-modal" onClick={handleCloseGallery}>
+            <div className="modal-content image-gallery-content" onClick={(e) => e.stopPropagation()}>
+              <h3>{selectedProduct.name}</h3>
+              <div className="image-gallery">
+                {(selectedProduct.product_image_urls || [selectedProduct.product_image_url] || []).map((img, index) => (
+                  <img key={index} src={img} alt={`${selectedProduct.name} ${index}`} className="gallery-image" />
+                ))}
+              </div>
+              <div className="modal-actions">
+                <button onClick={() => setSelectedProduct(null)}>ปิด</button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* สินค้าของผู้อื่น (เฉพาะ Admin) */}
-      {currentUser.role === 'admin' && (
+      {user.role === 'admin' && (
         <section className="others-products">
           <h2>สินค้าของผู้ขายอื่น</h2>
           <div className="product-list">
             {othersProducts.length > 0 ? (
               othersProducts.map((product) => (
                 <div key={product.id} className="product-item">
-                  <div className="product-card">
-                    <img src={product.product_image_url || './default-product.png'} alt={product.name} />
-                    <h3>{product.name}</h3>
-                    <p>{product.description || 'ไม่มีคำอธิบาย'}</p>
-                    <p className="seller-info">
-                      เจ้าของ: {(product.createdBy?.fname || 'ไม่ระบุชื่อ')} {(product.createdBy?.lname || '')}
-                    </p>
+                  <div onClick={() => handleProductClick(product)}>
+                    <ProductCard product={product} />
+                  </div>
+                  <div className="product-seller-info">
+                    <p>ผู้ขาย: {(product.createdBy?.fname || 'ไม่ระบุชื่อ')} {(product.createdBy?.lname || '')}</p>
                   </div>
                   <div className="product-actions">
                     <span className="icon-delete" onClick={() => handleDeleteProduct(product.id)} />
@@ -367,18 +523,17 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
         </section>
       )}
 
-      {/* ส่วน Orders คงเดิม */}
       <section className="orders">
         <h2>รายงานคำสั่งซื้อ</h2>
         {orders ? (
           <>
-            {currentUser.role === 'seller' && (
+            {user.role === 'seller' && (
               <div className="revenue-summary">
-                <p>รายได้ทั้งหมด: {formatCurrency(orders.totalRevenue)}</p>
-                <p>รายได้วันนี้: {formatCurrency(orders.dailyRevenue)}</p>
-                <p>รายได้เดือนนี้: {formatCurrency(orders.monthlyRevenue)}</p>
-                <p>คำสั่งซื้อที่เสร็จสิ้น: {orders.completedOrders || 0} รายการ</p>
-                <p>คำสั่งซื้อที่รอดำเนินการ: {orders.pendingOrders || 0} รายการ</p>
+                <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}ทั้งหมด: {formatCurrency(orders.totalRevenue)}</p>
+                <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}วันนี้: {formatCurrency(orders.dailyRevenue)}</p>
+                <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}เดือนนี้: {formatCurrency(orders.monthlyRevenue)}</p>
+                <p>คำสั่งซื้อที่เสร็จสิ้น: {orders.completedOrders} รายการ</p>
+                <p>คำสั่งซื้อที่รอดำเนินการ: {orders.pendingOrders} รายการ</p>
               </div>
             )}
             <div className="status-summary">
@@ -395,87 +550,88 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 <p>ไม่มีข้อมูลสถานะ</p>
               )}
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>รหัสคำสั่งซื้อ</th>
-                  <th>ผู้ซื้อ</th>
-                  <th>สินค้า</th>
-                  <th>ยอดรวม</th>
-                  <th>วันที่สั่งซื้อ</th>
-                  <th>สถานะ</th>
-                  <th>การจัดการ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.orders && orders.orders.length > 0 ? (
-                  orders.orders.map((order) => {
-                    const buyer = order.buyer || order.user || {};
-                    return (
-                      <tr key={order.id}>
-                        <td>{order.id || 'ไม่ระบุ'}</td>
-                        <td>
-                          {(buyer.fname || 'ไม่ระบุชื่อ')} {(buyer.lname || '')}
-                        </td>
-                        <td>
-                          {order.products && order.products.length > 0 ? (
-                            order.products.map((p) => (
-                              <div key={p.productId || Math.random()}>
-                                {p.name || 'ไม่ระบุชื่อสินค้า'} (x{p.quantity || 0})
-                              </div>
-                            ))
-                          ) : (
-                            'ไม่มีสินค้า'
-                          )}
-                        </td>
-                        <td>{formatCurrency(order.total)}</td>
-                        <td>{order.createdAt ? formatDate(order.createdAt) : 'ไม่ระบุ'}</td>
-                        <td>
-                          <span className={`status-badge status-${order.status || 'pending'}`}>
-                            {order.status === 'pending' && 'รอดำเนินการ'}
-                            {order.status === 'completed' && 'สำเร็จ'}
-                            {order.status === 'cancelled' && 'ยกเลิก'}
-                            {!order.status && 'รอดำเนินการ'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="icon-edit" onClick={() => handleEditOrder(order)} />
-                          <span className="icon-delete" onClick={() => handleDeleteOrder(order.id)} />
-                        </td>
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>รหัสคำสั่งซื้อ</th>
+                      <th>ผู้ซื้อ</th>
+                      <th>สินค้า</th>
+                      <th>ยอดรวม</th>
+                      <th>วันที่สั่งซื้อ</th>
+                      <th>สถานะ</th>
+                      <th>การจัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.orders && orders.orders.length > 0 ? (
+                      orders.orders.map((order) => {
+                        const buyer = order.buyer || order.user || {};
+                        return (
+                          <tr key={order.id}>
+                            <td>{order.id || 'ไม่ระบุ'}</td>
+                            <td>
+                              {(buyer.fname || 'ไม่ระบุชื่อ')} {(buyer.lname || '')}
+                            </td>
+                            <td>
+                              {order.products && order.products.length > 0 ? (
+                                order.products.map((p) => (
+                                  <div key={p.productId || Math.random()}>
+                                    {p.name || 'ไม่ระบุชื่อสินค้า'} (x{p.quantity || 0})
+                                  </div>
+                                ))
+                              ) : (
+                                'ไม่มีสินค้า'
+                              )}
+                            </td>
+                            <td>{formatCurrency(order.total)}</td>
+                            <td>{order.createdAt ? formatDate(order.createdAt) : 'ไม่ระบุ'}</td>
+                            <td>
+                              <span className={`status-badge status-${order.status || 'pending'}`}>
+                                {order.status === 'pending' && 'รอดำเนินการ'}
+                                {order.status === 'completed' && 'สำเร็จ'}
+                                {order.status === 'cancelled' && 'ยกเลิก'}
+                                {!order.status && 'รอดำเนินการ'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="icon-edit" onClick={() => handleEditOrder(order)} />
+                              <span className="icon-delete" onClick={() => handleDeleteOrder(order.id)} />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="7">ไม่มีคำสั่งซื้อ</td>
                       </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="7">ไม่มีคำสั่งซื้อ</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-
-            {editOrder && (
-              <div className="modal">
-                <div className="modal-content">
-                  <h3>แก้ไขคำสั่งซื้อ</h3>
-                  <select
-                    value={editOrder.status || 'pending'}
-                    onChange={(e) => setEditOrder({ ...editOrder, status: e.target.value })}
-                  >
-                    <option value="pending">รอดำเนินการ</option>
-                    <option value="completed">สำเร็จ</option>
-                    <option value="cancelled">ยกเลิก</option>
-                  </select>
-                  <div className="modal-actions">
-                    <button onClick={handleSaveOrder} disabled={isSaving}>
-                      {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-                    </button>
-                    <button onClick={() => setEditOrder(null)} disabled={isSaving}>
-                      ยกเลิก
-                    </button>
+                    )}
+                  </tbody>
+                </table>
+                {editOrder && (
+                  <div className="modal">
+                    <div className="modal-content">
+                      <h3>แก้ไขคำสั่งซื้อ</h3>
+                      <select
+                        value={editOrder.status || 'pending'}
+                        onChange={(e) => setEditOrder({ ...editOrder, status: e.target.value })}
+                      >
+                        <option value="pending">รอดำเนินการ</option>
+                        <option value="completed">สำเร็จ</option>
+                        <option value="cancelled">ยกเลิก</option>
+                      </select>
+                      <div className="modal-actions">
+                        <button onClick={handleSaveOrder} disabled={isSaving}>
+                          {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                        </button>
+                        <button onClick={() => setEditOrder(null)} disabled={isSaving}>
+                          ยกเลิก
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
+              </>
           </>
         ) : (
           <p>ไม่มีข้อมูลคำสั่งซื้อ</p>
@@ -499,6 +655,11 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
               placeholder="นามสกุล"
             />
             <input type="file" accept="image/*" onChange={handleImageChange} />
+            {editProfile.previewImage && (
+              <div className="image-preview-container">
+                <img src={editProfile.previewImage} alt="Profile Preview" className="image-preview" />
+              </div>
+            )}
             <div className="modal-actions">
               <button onClick={handleSaveProfile} disabled={isSaving}>
                 {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
@@ -506,6 +667,42 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
               <button onClick={() => setEditProfile(null)} disabled={isSaving}>
                 ยกเลิก
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="error-modal">
+          <div className="error-modal-content">
+            <h3>เกิดข้อผิดพลาด</h3>
+            <p>{error}</p>
+            <button onClick={() => setError('')}>ตกลง</button>
+          </div>
+        </div>
+      )}
+
+      {/* เพิ่มปุ่มแชทสำหรับ Seller */}
+      {user.role === 'seller' && (
+        <div className="chat-button" onClick={() => setIsReportModalOpen(true)}>
+          💬 รายงานปัญหา
+        </div>
+      )}
+
+      {/* Modal สำหรับรายงานปัญหา */}
+      {isReportModalOpen && user.role === 'seller' && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>รายงานปัญหา</h3>
+            <textarea
+              value={reportMessage}
+              onChange={(e) => setReportMessage(e.target.value)}
+              placeholder="กรุณากรอกข้อความเพื่อรายงานปัญหา..."
+              rows="5"
+            />
+            <div className="modal-actions">
+              <button onClick={handleSubmitReport}>ส่งรายงาน</button>
+              <button onClick={() => setIsReportModalOpen(false)}>ยกเลิก</button>
             </div>
           </div>
         </div>

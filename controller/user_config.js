@@ -1,10 +1,14 @@
+//controller/user_config.js
+
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const { Product, Order } = require('../models/product_config');
+const { User} = require('../models/product_config');
+const mongoose = require('mongoose');
 
 const salt = bcrypt.genSaltSync(10);
 const secret = process.env.JWT_SECRET || 'Nut150945';
@@ -45,17 +49,6 @@ const upload = multer({
   }
 }).single('profile_image');
 
-// กำหนด Schema และ Model
-const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  fname: { type: String, required: true },
-  lname: { type: String, required: true },
-  role: { type: String, default: 'seller', enum: ['seller', 'admin'] },
-  profile_image_url: { type: String }
-});
-
-const User = mongoose.model('User', userSchema);
 
 // Register User
 const registerUser = async (req, res) => {
@@ -99,7 +92,11 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'รหัสผ่านไม่ถูกต้อง' });
     }
 
-    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, secret, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
     res.json({ status: 'OK', message: 'ล็อกอินสำเร็จ', token });
   } catch (err) {
     console.error('Login error:', err);
@@ -183,7 +180,6 @@ const uploadProfileImage = (req, res) => {
         { _id: req.user.id },
         { $set: { profile_image_url: imageUrl } }
       );
-      console.log(imageUrl ,result)
       if (result.modifiedCount === 0) {
         return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
       }
@@ -274,12 +270,39 @@ const deleteUser = async (req, res) => {
     }
 
     const { userId } = req.params;
+
+    if (!userId || userId === ':userId' || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ status: 'error', message: 'userId ไม่ถูกต้อง' });
+    }
+
+
+    // ตรวจสอบว่าพบผู้ใช้หรือไม่ก่อนลบ
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
+    }
+
+    // ลบผู้ใช้
     const deletedUser = await User.findByIdAndDelete(userId);
     if (!deletedUser) {
       return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
     }
 
-    res.json({ status: 'OK', message: 'ลบสำเร็จ' });
+    // ลบสินค้าที่ผู้ใช้สร้าง
+    const deletedProducts = await Product.deleteMany({ createdBy: userId });
+
+    // ลบคำสั่งซื้อที่เกี่ยวข้องกับผู้ใช้ (ทั้งในฐานะผู้ซื้อ)
+    const deletedOrders = await Order.deleteMany({ userId: userId });
+
+    res.json({ 
+      status: 'OK', 
+      message: 'ลบผู้ใช้และข้อมูลที่เกี่ยวข้องสำเร็จ',
+      deleted: {
+        user: deletedUser._id,
+        products: deletedProducts.deletedCount,
+        orders: deletedOrders.deletedCount
+      }
+    });
   } catch (err) {
     console.error('Delete user error:', err);
     res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });

@@ -7,6 +7,7 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const connectDB = require('./config/db');
 const authMiddleware = require('./authMiddleware');
+
 const {
   registerUser,
   loginUser,
@@ -37,6 +38,14 @@ const {
   getSellerOrderReport
 } = require('./controller/orderController');
 
+const {
+  createReport,
+  getReports,
+  updateReport,
+} = require('./controller/reportController');
+
+require('./models/product_config');
+
 const app = express();
 const jsonParser = bodyParser.json();
 
@@ -47,8 +56,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// ตั้งค่า Multer กับ Cloudinary
-const storage = new CloudinaryStorage({
+// Multer สำหรับโปรไฟล์ผู้ใช้
+const profileStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'profile_images',
@@ -58,9 +67,9 @@ const storage = new CloudinaryStorage({
   }
 });
 
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+const uploadProfile = multer({
+  storage: profileStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
@@ -72,25 +81,63 @@ const upload = multer({
   }
 });
 
+// Multer สำหรับสินค้า
+const productStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'product_images',
+    allowed_formats: ['jpg', 'png', 'jpeg'],
+    public_id: (req, file) => `product-${Date.now()}`,
+    transformation: [{ width: 800, height: 800, crop: 'limit' }, { quality: 'auto' }]
+  }
+});
+
+const uploadProductImages = multer({
+  storage: productStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png/;
+    const mimetype = filetypes.test(file.mimetype);
+    if (mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('เฉพาะไฟล์รูปภาพ JPEG/JPG/PNG เท่านั้น'));
+    }
+  }
+}).array('product_images', 10);
+
+// Middleware จัดการ error จาก multer
+const multerErrorHandler = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ status: 'error', message: err.message });
+  } else if (err) {
+    return res.status(400).json({ status: 'error', message: err.message });
+  }
+  next();
+};
+
 app.use(cors());
 connectDB();
 
-// Routes
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Routes - User
 app.post('/register', jsonParser, registerUser);
 app.post('/login', jsonParser, loginUser);
 app.post('/authen', jsonParser, authMiddleware, authenticate);
 app.get('/protected', authMiddleware, protectedRoute);
 app.post('/logout', jsonParser, logoutUser);
 app.get('/user/profile', authMiddleware, userprofile);
-app.post('/user/uploadprofile', authMiddleware, upload.single('profile_image'), uploadProfileImage);
-app.put('/user/profile', authMiddleware, upload.single('profile_image'), updateUserProfile);
+app.post('/user/uploadprofile', authMiddleware, uploadProfile.single('profile_image'), multerErrorHandler, uploadProfileImage);
+app.put('/user/profile', authMiddleware, uploadProfile.single('profile_image'), multerErrorHandler, updateUserProfile);
 app.get('/users', authMiddleware, getUsers);
 app.put('/users/:userId', authMiddleware, jsonParser, updateUser);
 app.delete('/users/:userId', authMiddleware, deleteUser);
 
-// Product
-app.post('/product/upload', authMiddleware, upload.single('product_image'), uploadProduct);
-app.put('/product/:productId', authMiddleware, upload.single('product_image'), updateProduct);
+// Product Routes
+app.post('/product/upload', authMiddleware, uploadProductImages, multerErrorHandler, uploadProduct);
+app.put('/product/:productId', authMiddleware, uploadProductImages, multerErrorHandler, updateProduct);
 app.delete('/product/:productId', authMiddleware, deleteProduct);
 app.get('/products', authMiddleware, getProducts);
 
@@ -99,11 +146,13 @@ app.post('/orders', authMiddleware, jsonParser, createOrder);
 app.get('/orders', authMiddleware, getOrders);
 app.put('/orders/:orderId', authMiddleware, jsonParser, updateOrder);
 app.delete('/orders/:orderId', authMiddleware, deleteOrder);
-app.get('/orders/report', authMiddleware, getOrderReport); 
-app.get('/orders/seller', authMiddleware, getSellerOrderReport); 
+app.get('/orders/report', authMiddleware, getOrderReport);
+app.get('/orders/seller', authMiddleware, getSellerOrderReport);
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+//Report Routes
+app.post('/reports', authMiddleware, createReport);
+app.get('/reports', authMiddleware, getReports);
+app.put('/reports/:reportId', authMiddleware, updateReport);
 
 const PORT = 3333;
 app.listen(PORT, () => {
