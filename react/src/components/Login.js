@@ -67,7 +67,7 @@ function Login({ setUser }) {
       <h2>เข้าสู่ระบบ</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label>Email</label>
+          <label>อีเมล</label>
           <input
             type="email"
             value={email}

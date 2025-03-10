@@ -33,7 +33,14 @@ const UserSchema = new Schema({
   role: { type: String, enum: ['admin', 'seller'], default: 'seller' },
   profile_image_url: { type: String },
   resetPasswordToken: { type: String },
-  resetPasswordExpires: { type: Date }
+  resetPasswordExpires: { type: Date },
+  address: {
+    street: { type: String },
+    city: { type: String },
+    province: { type: String },
+    postalCode: { type: String },
+    country: { type: String }
+  }
 });
 
 // Schema สำหรับ Report

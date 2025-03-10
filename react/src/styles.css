@@ -21,8 +21,8 @@ body {
 :root {
   --primary-color: #007bff;
   --secondary-color: #6c757d;
-  --success-color: #28a745;
-  --danger-color: #dc3545;
+  --success-color: #28a745; /* สีเขียวสำหรับบันทึก/ยืนยัน */
+  --danger-color: #dc3545;  /* สีแดงสำหรับยกเลิก */
   --light-bg: #ffffff;
   --border-color: #e0e0e0;
 }
@@ -168,40 +168,6 @@ body {
   background-color: #f1f3f5;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .user-management {
-    padding: 20px;
-  }
-  .user-management h1 {
-    font-size: 1.5rem;
-  }
-  .search-bar input {
-    width: 100%;
-    max-width: 300px;
-  }
-  .user-list table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-}
-
-@media (max-width: 480px) {
-  .user-management {
-    padding: 15px;
-    margin: 0 10px;
-  }
-  .user-management h1 {
-    font-size: 1.3rem;
-  }
-  .search-bar input {
-    max-width: 250px;
-    padding: 8px 12px;
-    font-size: 0.9rem;
-  }
-}
-
 /* Auth Pages (Login & Register) */
 .auth-container {
   max-width: 450px;
@@ -230,7 +196,8 @@ body {
   color: var(--secondary-color);
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: 12px;
   border: 1px solid var(--border-color);
@@ -239,12 +206,48 @@ body {
   transition: border-color 0.3s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
 }
 
+/* ปรับแต่ง dropdown สำหรับจังหวัด */
+.form-group select {
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236c757d" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+/* ปรับแต่งฟิลด์ที่ถูกล็อก (เช่น ประเทศ) */
+.form-group input:disabled {
+  background-color: #f0f0f0;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* ส่วนที่อยู่ */
+.address-group {
+  margin-top: 15px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 15px;
+}
+
+.address-group h4 {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+  margin-bottom: 15px;
+}
+
+.address-group .form-group {
+  margin-bottom: 15px;
+}
+
+/* ปุ่ม */
 button {
   width: 100%;
   padding: 12px;
@@ -273,14 +276,7 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-.success {
-  color: var(--success-color);
-  text-align: center;
-  margin: 15px 0;
-  font-size: 0.9rem;
-}
-
-.auth-container p.auth-links {
+.auth-container p {
   text-align: center;
   margin-top: 20px;
   font-size: 0.9rem;
@@ -292,17 +288,6 @@ button:disabled {
 }
 
 .auth-container a:hover {
-  text-decoration: underline;
-}
-
-.forgot-password-link {
-  color: #ff9800; /* สีส้มเพื่อให้เด่นชัด */
-  font-weight: 500;
-  margin-left: 5px;
-}
-
-.forgot-password-link:hover {
-  color: #e68a00;
   text-decoration: underline;
 }
 
@@ -387,7 +372,6 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-  overflow: hidden;
 }
 
 .product-item {
@@ -401,11 +385,10 @@ button:disabled {
   padding: 15px;
   transition: transform 0.3s, box-shadow 0.3s;
   width: 100%;
-  height: 300px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .product-card:hover {
@@ -425,18 +408,35 @@ button:disabled {
   font-size: 1.1rem;
   color: var(--primary-color);
   margin-bottom: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .product-card p {
   font-size: 0.9rem;
   color: var(--secondary-color);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 5px 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* ปรับแต่งสไตล์สำหรับจังหวัด, หมวดหมู่ และสต็อก */
+.product-card .province,
+.product-card .category,
+.product-card .stock {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 5px 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.product-card .stock.low {
+  color: var(--danger-color);
+  font-weight: bold;
 }
 
 .product-actions {
@@ -461,7 +461,6 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-  overflow: hidden;
 }
 
 .others-products .product-item {
@@ -475,11 +474,10 @@ button:disabled {
   padding: 15px;
   transition: transform 0.3s, box-shadow 0.3s;
   width: 100%;
-  height: 300px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .others-products .product-card:hover {
@@ -499,18 +497,18 @@ button:disabled {
   font-size: 1.1rem;
   color: var(--primary-color);
   margin-bottom: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .others-products .product-card p {
   font-size: 0.9rem;
   color: var(--secondary-color);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 5px 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .others-products .product-card .seller-info {
@@ -518,6 +516,9 @@ button:disabled {
   color: #555;
   margin-top: 5px;
   font-style: italic;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .others-products .product-actions {
@@ -525,18 +526,6 @@ button:disabled {
   display: flex;
   gap: 10px;
   justify-content: center;
-}
-
-/* เพิ่มสไตล์สำหรับ category และ stock */
-.product-card .category,
-.product-card .stock {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.product-card .stock.low {
-  color: var(--danger-color);
-  font-weight: bold;
 }
 
 /* Orders Section */
@@ -745,17 +734,38 @@ tr:hover {
   justify-content: flex-end;
 }
 
-.modal-actions button {
-  width: auto;
+/* ปุ่มสลับสี: ยกเลิก (แดง) และบันทึก (เขียว) */
+.modal-actions button:first-child {
+  background-color: var(--danger-color); /* ยกเลิก - สีแดง */
+  color: white;
   padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
-.modal-actions button:first-child {
-  background-color: var(--primary-color);
+.modal-actions button:first-child:hover {
+  background-color: #c82333;
 }
 
 .modal-actions button:last-child {
+  background-color: var(--success-color); /* บันทึก - สีเขียว */
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.modal-actions button:last-child:hover {
+  background-color: #218838;
+}
+
+.modal-actions button:disabled {
   background-color: var(--secondary-color);
+  cursor: not-allowed;
 }
 
 /* สถานะคำสั่งซื้อ */
@@ -781,270 +791,7 @@ tr:hover {
   color: white;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  /* Navbar */
-  .navbar {
-    flex-direction: column;
-    padding: 15px 20px;
-    gap: 10px;
-  }
-  .navbar h3 {
-    font-size: 1.3rem;
-  }
-  .navbar div {
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-  }
-  .navbar button {
-    width: 100%;
-    padding: 10px;
-  }
-
-  /* Auth Container */
-  .auth-container {
-    margin: 40px 20px;
-    padding: 20px;
-    max-width: 100%;
-  }
-  .auth-container h2 {
-    font-size: 1.5rem;
-  }
-  .form-group input {
-    padding: 10px;
-    font-size: 0.9rem;
-  }
-  button {
-    padding: 10px;
-    font-size: 0.9rem;
-  }
-
-  /* Dashboard */
-  .dashboard {
-    padding: 20px;
-  }
-  .dashboard h1 {
-    font-size: 1.5rem;
-  }
-  .profile {
-    flex-direction: column;
-    text-align: center;
-    padding: 10px;
-  }
-  .profile img {
-    width: 50px;
-    height: 50px;
-  }
-  .profile p {
-    font-size: 1rem;
-  }
-
-  /* Products และ Others Products */
-  .products h2,
-  .others-products h2 {
-    font-size: 1.3rem;
-  }
-  .products .product-list,
-  .others-products .product-list {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-  .products .product-card,
-  .others-products .product-card {
-    height: 250px;
-  }
-  .products .product-card img,
-  .others-products .product-card img {
-    height: 120px;
-  }
-  .products .product-card h3,
-  .others-products .product-card h3 {
-    font-size: 1rem;
-  }
-  .products .product-card p,
-  .others-products .product-card p {
-    font-size: 0.85rem;
-  }
-  .others-products .product-card .seller-info {
-    font-size: 0.8rem;
-  }
-
-  /* Orders */
-  .orders {
-    margin-top: 30px;
-  }
-  .orders h2 {
-    font-size: 1.3rem;
-  }
-  .revenue-summary {
-    padding: 10px;
-  }
-  .revenue-summary p {
-    font-size: 1rem;
-  }
-  .status-summary h3 {
-    font-size: 1.1rem;
-  }
-  .status-summary .status-badge {
-    font-size: 0.8rem;
-    padding: 4px 8px;
-  }
-  table {
-    font-size: 0.8rem;
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-  th, td {
-    padding: 8px 10px;
-    min-width: 100px;
-  }
-
-  /* Modal */
-  .modal-content {
-    padding: 15px;
-    max-width: 90%;
-  }
-  .modal-content h3 {
-    font-size: 1.3rem;
-  }
-  .modal-content input,
-  .modal-content textarea,
-  .modal-content select {
-    padding: 8px;
-    font-size: 0.9rem;
-  }
-  .modal-actions button {
-    padding: 6px 12px;
-    font-size: 0.9rem;
-  }
-}
-
-@media (max-width: 480px) {
-  /* Navbar */
-  .navbar {
-    padding: 10px 15px;
-  }
-  .navbar h3 {
-    font-size: 1.2rem;
-  }
-  .navbar span {
-    font-size: 0.9rem;
-  }
-  .navbar button {
-    font-size: 0.85rem;
-  }
-
-  /* Auth Container */
-  .auth-container {
-    margin: 20px 10px;
-    padding: 15px;
-  }
-  .auth-container h2 {
-    font-size: 1.3rem;
-  }
-  .form-group label {
-    font-size: 0.9rem;
-  }
-  .form-group input {
-    padding: 8px;
-    font-size: 0.85rem;
-  }
-  button {
-    padding: 8px;
-    font-size: 0.85rem;
-  }
-  .auth-container p.auth-links {
-    font-size: 0.85rem;
-  }
-
-  /* Dashboard */
-  .dashboard {
-    padding: 15px;
-  }
-  .dashboard h1 {
-    font-size: 1.3rem;
-  }
-  .profile img {
-    width: 40px;
-    height: 40px;
-  }
-  .profile p {
-    font-size: 0.9rem;
-  }
-
-  /* Products และ Others Products */
-  .products h2,
-  .others-products h2 {
-    font-size: 1.2rem;
-  }
-  .products .product-list,
-  .others-products .product-list {
-    grid-template-columns: 1fr;
-  }
-  .products .product-card,
-  .others-products .product-card {
-    height: 220px;
-  }
-  .products .product-card img,
-  .others-products .product-card img {
-    height: 100px;
-  }
-  .products .product-card h3,
-  .others-products .product-card h3 {
-    font-size: 0.9rem;
-  }
-  .products .product-card p,
-  .others-products .product-card p {
-    font-size: 0.8rem;
-  }
-  .others-products .product-card .seller-info {
-    font-size: 0.75rem;
-  }
-
-  /* Orders */
-  .orders h2 {
-    font-size: 1.2rem;
-  }
-  .revenue-summary p {
-    font-size: 0.9rem;
-  }
-  .status-summary h3 {
-    font-size: 1rem;
-  }
-  .status-summary .status-badge {
-    font-size: 0.75rem;
-    padding: 3px 6px;
-  }
-  th, td {
-    padding: 6px 8px;
-    font-size: 0.75rem;
-  }
-
-  /* Modal */
-  .modal-content {
-    padding: 10px;
-  }
-  .modal-content h3 {
-    font-size: 1.2rem;
-  }
-  .modal-content input,
-  .modal-content textarea,
-  .modal-content select {
-    padding: 6px;
-    font-size: 0.85rem;
-  }
-  .modal-actions {
-    flex-direction: column;
-    gap: 5px;
-  }
-  .modal-actions button {
-    width: 100%;
-    padding: 8px;
-    font-size: 0.85rem;
-  }
-}
-
+/* Image Preview */
 .image-preview-container {
   display: flex;
   flex-wrap: wrap;
@@ -1060,29 +807,11 @@ tr:hover {
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid var(--border-color);
-}
-
-/* Image Preview ใน Modal */
-.image-preview-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 15px 0;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .image-preview-item {
   position: relative;
   display: inline-block;
-}
-
-.image-preview {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
 }
 
 .remove-image {
@@ -1166,60 +895,6 @@ tr:hover {
   background-color: #0056b3;
 }
 
-/* Modal สำหรับรายงานปัญหา */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 20px;
-  border-radius: 5px;
-  width: 90%;
-  max-width: 500px;
-}
-
-.modal-content textarea {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 15px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  resize: vertical;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.modal-actions button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.modal-actions button:first-child {
-  background-color: #007bff;
-  color: white;
-}
-
-.modal-actions button:last-child {
-  background-color: #dc3545;
-  color: white;
-}
-
 /* หน้า ViewReports */
 .view-reports {
   padding: 20px;
@@ -1262,15 +937,16 @@ tr:hover {
 
 .view-reports button {
   padding: 5px 10px;
-  background-color: #007bff;
+  background-color: var(--success-color); /* ปุ่มยืนยัน - สีเขียว */
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .view-reports button:hover {
-  background-color: #0056b3;
+  background-color: #218838;
 }
 
 /* Category Management */
@@ -1322,7 +998,7 @@ tr:hover {
 
 .add-category-section button {
   padding: 6px 12px;
-  background-color: var(--primary-color);
+  background-color: var(--success-color); /* ปุ่มเพิ่ม - สีเขียว */
   color: white;
   border: none;
   border-radius: 4px;
@@ -1332,7 +1008,7 @@ tr:hover {
 }
 
 .add-category-section button:hover {
-  background-color: #0056b3;
+  background-color: #218838;
 }
 
 /* Category List */
@@ -1362,7 +1038,7 @@ tr:hover {
 
 .category-list button {
   padding: 5px 10px;
-  background-color: var(--primary-color);
+  background-color: var(--success-color); /* ปุ่มแก้ไข - สีเขียว */
   color: white;
   border: none;
   border-radius: 4px;
@@ -1371,7 +1047,7 @@ tr:hover {
 }
 
 .category-list button:hover {
-  background-color: #0056b3;
+  background-color: #218838;
 }
 
 /* Category Products */
@@ -1398,7 +1074,7 @@ tr:hover {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  height: 250px;
+  height: auto;
 }
 
 .category-products .product-card img {
@@ -1413,9 +1089,9 @@ tr:hover {
   font-size: 1rem;
   color: var(--primary-color);
   margin-bottom: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
   max-width: 100%;
 }
 
@@ -1423,6 +1099,9 @@ tr:hover {
   font-size: 0.85rem;
   color: var(--secondary-color);
   margin: 4px 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .category-products button {
@@ -1450,45 +1129,166 @@ tr:hover {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    padding: 15px 20px;
+    gap: 10px;
+  }
+  .navbar h3 {
+    font-size: 1.3rem;
+  }
+  .navbar div {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  .navbar button {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .auth-container {
+    margin: 40px 20px;
+    padding: 20px;
+    max-width: 100%;
+  }
+  .auth-container h2 {
+    font-size: 1.5rem;
+  }
+  .form-group input {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+  button {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+  .dashboard {
+    padding: 20px;
+  }
+  .dashboard h1 {
+    font-size: 1.5rem;
+  }
+  .profile {
+    flex-direction: column;
+    text-align: center;
+    padding: 10px;
+  }
+  .profile img {
+    width: 50px;
+    height: 50px;
+  }
+  .profile p {
+    font-size: 1rem;
+  }
+
+  .products h2,
+  .others-products h2 {
+    font-size: 1.3rem;
+  }
+  .products .product-list,
+  .others-products .product-list {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+  .products .product-card,
+  .others-products .product-card {
+    height: auto;
+  }
+  .products .product-card img,
+  .others-products .product-card img {
+    height: 120px;
+  }
+  .products .product-card h3,
+  .others-products .product-card h3 {
+    font-size: 1rem;
+  }
+  .products .product-card p,
+  .others-products .product-card p {
+    font-size: 0.85rem;
+  }
+  .others-products .product-card .seller-info {
+    font-size: 0.8rem;
+  }
+
+  .orders {
+    margin-top: 30px;
+  }
+  .orders h2 {
+    font-size: 1.3rem;
+  }
+  .revenue-summary {
+    padding: 10px;
+  }
+  .revenue-summary p {
+    font-size: 1rem;
+  }
+  .status-summary h3 {
+    font-size: 1.1rem;
+  }
+  .status-summary .status-badge {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+  }
+  table {
+    font-size: 0.8rem;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  th, td {
+    padding: 8px 10px;
+    min-width: 100px;
+  }
+
+  .modal-content {
+    padding: 15px;
+    max-width: 90%;
+  }
+  .modal-content h3 {
+    font-size: 1.3rem;
+  }
+  .modal-content input,
+  .modal-content textarea,
+  .modal-content select {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+  .modal-actions button {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+  }
+
   .category-management {
     padding: 15px;
   }
-
   .category-management h1 {
     font-size: 1.5rem;
   }
-
   .category-management h2 {
     font-size: 1.3rem;
   }
-
   .add-category-section .form-group {
     flex-direction: column;
     align-items: flex-start;
   }
-
   .add-category-section input {
     max-width: 150px;
   }
-
   .category-list table {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
   }
-
   .category-products {
     max-width: 600px;
   }
-
   .category-products .product-list {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
-
   .category-products .product-card {
-    height: 200px;
+    height: auto;
   }
-
   .category-products .product-card img {
     width: 60px;
     height: 60px;
@@ -1496,24 +1296,137 @@ tr:hover {
 }
 
 @media (max-width: 480px) {
+  .navbar {
+    padding: 10px 15px;
+  }
+  .navbar h3 {
+    font-size: 1.2rem;
+  }
+  .navbar span {
+    font-size: 0.9rem;
+  }
+  .navbar button {
+    font-size: 0.85rem;
+  }
+
+  .auth-container {
+    margin: 20px 10px;
+    padding: 15px;
+  }
+  .auth-container h2 {
+    font-size: 1.3rem;
+  }
+  .form-group label {
+    font-size: 0.9rem;
+  }
+  .form-group input {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+  button {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+  .auth-container p.auth-links {
+    font-size: 0.85rem;
+  }
+
+  .dashboard {
+    padding: 15px;
+  }
+  .dashboard h1 {
+    font-size: 1.3rem;
+  }
+  .profile img {
+    width: 40px;
+    height: 40px;
+  }
+  .profile p {
+    font-size: 0.9rem;
+  }
+
+  .products h2,
+  .others-products h2 {
+    font-size: 1.2rem;
+  }
+  .products .product-list,
+  .others-products .product-list {
+    grid-template-columns: 1fr;
+  }
+  .products .product-card,
+  .others-products .product-card {
+    height: auto;
+  }
+  .products .product-card img,
+  .others-products .product-card img {
+    height: 100px;
+  }
+  .products .product-card h3,
+  .others-products .product-card h3 {
+    font-size: 0.9rem;
+  }
+  .products .product-card p,
+  .others-products .product-card p {
+    font-size: 0.8rem;
+  }
+  .others-products .product-card .seller-info {
+    font-size: 0.75rem;
+  }
+
+  .orders h2 {
+    font-size: 1.2rem;
+  }
+  .revenue-summary p {
+    font-size: 0.9rem;
+  }
+  .status-summary h3 {
+    font-size: 1rem;
+  }
+  .status-summary .status-badge {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+  }
+  th, td {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+
+  .modal-content {
+    padding: 10px;
+  }
+  .modal-content h3 {
+    font-size: 1.2rem;
+  }
+  .modal-content input,
+  .modal-content textarea,
+  .modal-content select {
+    padding: 6px;
+    font-size: 0.85rem;
+  }
+  .modal-actions {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .modal-actions button {
+    width: 100%;
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+
   .category-management {
     padding: 10px;
   }
-
   .category-management h1 {
     font-size: 1.3rem;
   }
-
   .category-management h2 {
     font-size: 1.2rem;
   }
-
   .add-category-section .form-group {
     display: flex;
     gap: 10px;
     align-items: center;
   }
-
   .add-category-section input {
     width: 100%;
     max-width: 200px;
@@ -1524,16 +1437,14 @@ tr:hover {
     outline: none;
     transition: border-color 0.3s;
   }
-
   .add-category-section input:focus {
     border-color: var(--primary-color);
   }
-
   .add-category-section button {
     padding: 6px 12px;
     width: auto;
     max-width: 80px;
-    background-color: var(--primary-color);
+    background-color: var(--success-color);
     color: white;
     border: none;
     border-radius: 4px;
@@ -1542,32 +1453,25 @@ tr:hover {
     transition: background-color 0.3s;
     white-space: nowrap;
   }
-
   .add-category-section button:hover {
-    background-color: #0056b3;
+    background-color: #218838;
   }
-
   .category-products {
     max-width: 100%;
   }
-
   .category-products .product-list {
     grid-template-columns: 1fr;
   }
-
   .category-products .product-card {
-    height: 180px;
+    height: auto;
   }
-
   .category-products .product-card img {
     width: 50px;
     height: 50px;
   }
-
   .category-products .product-card h3 {
     font-size: 0.9rem;
   }
-
   .category-products .product-card p {
     font-size: 0.8rem;
   }

@@ -73,7 +73,7 @@ const profileStorage = new CloudinaryStorage({
 
 const uploadProfile = multer({
   storage: profileStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
@@ -98,7 +98,7 @@ const productStorage = new CloudinaryStorage({
 
 const uploadProductImages = multer({
   storage: productStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
@@ -140,7 +140,6 @@ app.put('/user/profile', authMiddleware, uploadProfile.single('profile_image'), 
 app.get('/users', authMiddleware, getUsers);
 app.put('/users/:userId', authMiddleware, jsonParser, updateUser);
 app.delete('/users/:userId', authMiddleware, deleteUser);
-
 
 // Product Routes
 app.post('/product/upload', authMiddleware, uploadProductImages, multerErrorHandler, uploadProduct);

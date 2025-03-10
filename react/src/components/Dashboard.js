@@ -36,6 +36,26 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
 
+  // รายชื่อ 77 จังหวัดของประเทศไทย
+  const provinces = [
+    "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร",
+    "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท",
+    "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง",
+    "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม",
+    "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส",
+    "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์",
+    "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พังงา", "พัทลุง",
+    "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่",
+    "พะเยา", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน",
+    "ยะลา", "ยโสธร", "ร้อยเอ็ด", "ระนอง", "ระยอง",
+    "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย",
+    "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ",
+    "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี",
+    "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย",
+    "หนองบัวลำภู", "อ่างทอง", "อุดรธานี", "อุทัยธานี", "อุตรดิตถ์",
+    "อุบลราชธานี", "อำนาจเจริญ"
+  ];
+
   const fetchData = async (userRole) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -43,7 +63,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       return;
     }
     setAuthToken(token);
-
+  
     setLoading(true);
     setError('');
     try {
@@ -51,37 +71,54 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
         getProducts(),
         userRole === 'admin' ? getOrderReport() : getSellerOrders(),
         getProfile(),
-        getCategories()
+        getCategories(),
       ]);
-
-      console.log('Product Response (Raw):', productRes);
-
+  
+      console.log('Product Response (Raw):', productRes); // ตรวจสอบข้อมูลดิบที่นี่
+  
       const myId = profileRes.user._id || profileRes.user.id;
       if (!myId) throw new Error('ไม่พบ ID ผู้ใช้จากโปรไฟล์');
-
-      const cleanProducts = Array.isArray(productRes.products) 
-        ? productRes.products.map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            description: p.description,
-            stock: p.stock || 0,
-            category: p.category || null, // เปลี่ยนจาก string เป็น object { id, name }
-            product_image_urls: p.product_image_urls || [p.product_image_url] || [],
-            createdBy: p.createdBy
-          }))
+  
+      const cleanProducts = Array.isArray(productRes.products)
+        ? productRes.products.map((p) => {
+            console.log('Raw Product:', p); // ตรวจสอบสินค้าแต่ละรายการ
+            return {
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              description: p.description,
+              stock: p.stock || 0,
+              category: p.category || null,
+              product_image_urls: p.product_image_urls || [p.product_image_url] || [],
+              createdBy: {
+                id: p.createdBy?.id || p.createdBy?._id,
+                fname: p.createdBy?.fname || '',
+                lname: p.createdBy?.lname || '',
+                address: {
+                  province: p.createdBy?.address?.province || '', // ตรวจสอบว่ามีข้อมูลไหม
+                  street: p.createdBy?.address?.street || '',
+                  city: p.createdBy?.address?.city || '',
+                  postalCode: p.createdBy?.address?.postalCode || '',
+                  country: p.createdBy?.address?.country || '',
+                },
+              },
+            };
+          })
         : [];
-
-      const myProds = cleanProducts.filter(p => 
-        p.createdBy && p.createdBy.id && p.createdBy.id.toString() === myId.toString()
+  
+      const myProds = cleanProducts.filter(
+        (p) => p.createdBy && p.createdBy.id && p.createdBy.id.toString() === myId.toString()
       ) || [];
       setMyProducts(myProds);
-
-      const othersProds = userRole === 'admin' ? cleanProducts.filter(p => 
-        p.createdBy && p.createdBy.id && p.createdBy.id.toString() !== myId.toString()
-      ) || [] : [];
+  
+      const othersProds =
+        userRole === 'admin'
+          ? cleanProducts.filter(
+              (p) => p.createdBy && p.createdBy.id && p.createdBy.id.toString() !== myId.toString()
+            ) || []
+          : [];
       setOthersProducts(othersProds);
-
+  
       let processedOrders = orderRes;
       if (orderRes && typeof orderRes === 'object') {
         processedOrders = {
@@ -92,7 +129,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
           completedOrders: orderRes.completedOrders || 0,
           pendingOrders: orderRes.pendingOrders || 0,
           statusSummary: orderRes.statusSummary || {},
-          orders: orderRes.orders || []
+          orders: orderRes.orders || [],
         };
       } else {
         processedOrders = {
@@ -102,16 +139,16 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
           completedOrders: 0,
           pendingOrders: 0,
           statusSummary: {},
-          orders: []
+          orders: [],
         };
       }
-
+  
       setOrders(processedOrders);
       setCurrentUser(profileRes.user || user);
       updateUser(profileRes.user || user);
       setCategories(categoryRes.categories || []);
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (err) {
       console.error('Fetch Error:', err);
       setError(err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
@@ -182,7 +219,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       formData.append('name', editProduct.name);
       formData.append('price', editProduct.price);
       formData.append('description', editProduct.description);
-      formData.append('category', editProduct.category ? editProduct.category.id : ''); // ส่ง category.id
+      formData.append('category', editProduct.category ? editProduct.category.id : '');
       formData.append('stock', editProduct.stock);
       if (editProduct.newImages && editProduct.newImages.length > 0) {
         editProduct.newImages.forEach((image) => {
@@ -215,8 +252,14 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       formData.append('name', newProduct.name);
       formData.append('price', newProduct.price);
       formData.append('description', newProduct.description);
-      formData.append('category', newProduct.category ? newProduct.category.id : ''); // ส่ง category.id
+      formData.append('category', newProduct.category ? newProduct.category.id : '');
       formData.append('stock', newProduct.stock);
+      
+      // ส่ง province ของผู้ขาย (จาก currentUser.address.province)
+      if (currentUser.address) {
+        formData.append('province', currentUser.address.province || '');
+      }
+      
       if (newProduct.newImages && newProduct.newImages.length > 0) {
         newProduct.newImages.forEach((image) => {
           formData.append('product_images', image);
@@ -224,6 +267,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       } else {
         throw new Error('กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป');
       }
+      
       await uploadProduct(formData);
       setNewProduct(null);
       fetchData(user.role);
@@ -255,9 +299,20 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       const formData = new FormData();
       formData.append('fname', editProfile.fname);
       formData.append('lname', editProfile.lname);
+
+      // เพิ่มที่อยู่ (address)
+      if (editProfile.address) {
+        formData.append('address[street]', editProfile.address.street || '');
+        formData.append('address[city]', editProfile.address.city || '');
+        formData.append('address[province]', editProfile.address.province || '');
+        formData.append('address[postalCode]', editProfile.address.postalCode || '');
+        formData.append('address[country]', 'Thailand'); // บังคับให้เป็น Thailand
+      }
+
       if (editProfile.newImage) {
         formData.append('profile_image', editProfile.newImage);
       }
+
       const updatedProfile = await updateProfile(formData);
       setEditProfile(null);
       setCurrentUser(updatedProfile.user);
@@ -305,7 +360,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       if (index >= originalImageCount) {
         newImages.splice(index - originalImageCount, 1);
       } else {
-        setDeletedImages(prev => [...prev, removedImage]);
+        setDeletedImages((prev) => [...prev, removedImage]);
         console.log('Removed original image:', removedImage);
       }
       setEditProduct({ ...editProduct, previewImages: newPreviewImages, newImages });
@@ -359,24 +414,25 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     }
   };
 
-  return (
-    <div className="dashboard" style={{ overflow: 'hidden' }}>
-      {loading && (
-        <div className="loading-overlay">
-          <div className="loading">กำลังโหลด...</div>
-        </div>
-      )}
-      
-      <h1>แดชบอร์ด{user.role === 'admin' ? 'แอดมิน' : 'ผู้ขาย'}</h1>
-      <div className="profile">
-        <img 
-          src={currentUser.profile_image_url || defaultAvatar} 
-          alt="Profile" 
-        />
-        <p>
-          ยินดีต้อนรับ, {(currentUser.fname || 'ไม่ระบุชื่อ')} {(currentUser.lname || '')}
-        </p>
+  
+return (
+  <div className="dashboard" style={{ overflow: 'hidden' }}>
+    {loading && (
+      <div className="loading-overlay">
+        <div className="loading">กำลังโหลด...</div>
       </div>
+    )}
+    
+    <h1>แดชบอร์ด{user.role === 'admin' ? 'แอดมิน' : 'ผู้ขาย'}</h1>
+    <div className="profile">
+      <img 
+        src={currentUser.profile_image_url || defaultAvatar} 
+        alt="Profile" 
+      />
+      <p>
+        ยินดีต้อนรับ, {(currentUser.fname || 'ไม่ระบุชื่อ')} {(currentUser.lname || '')}
+      </p>
+    </div>
 
       <section className="products">
         <div className="products-header">
@@ -428,12 +484,12 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
               <select
                 value={editProduct.category ? editProduct.category.id : ''}
                 onChange={(e) => {
-                  const selectedCategory = categories.find(cat => cat.id === e.target.value);
+                  const selectedCategory = categories.find((cat) => cat.id === e.target.value);
                   setEditProduct({ ...editProduct, category: selectedCategory || null });
                 }}
               >
                 <option value="">เลือกหมวดหมู่</option>
-                {categories.map(cat => (
+                {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
@@ -461,16 +517,17 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 </div>
               )}
               <div className="modal-actions">
-                <button onClick={handleSaveProduct} disabled={isSaving}>
-                  {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-                </button>
-                <button onClick={() => setEditProduct(null)} disabled={isSaving}>
-                  ยกเลิก
-                </button>
-              </div>
+              <button onClick={() => setEditProduct(null)} disabled={isSaving}>
+                ยกเลิก
+              </button>
+              <button onClick={handleSaveProduct} disabled={isSaving}>
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
 
         {newProduct && (
           <div className="modal">
@@ -496,12 +553,12 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
               <select
                 value={newProduct.category ? newProduct.category.id : ''}
                 onChange={(e) => {
-                  const selectedCategory = categories.find(cat => cat.id === e.target.value);
+                  const selectedCategory = categories.find((cat) => cat.id === e.target.value);
                   setNewProduct({ ...newProduct, category: selectedCategory || null });
                 }}
               >
                 <option value="">เลือกหมวดหมู่</option>
-                {categories.map(cat => (
+                {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
@@ -529,23 +586,23 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 </div>
               )}
               <div className="modal-actions">
-                <button onClick={handleSaveNewProduct} disabled={isSaving}>
-                  {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-                </button>
-                <button onClick={() => setNewProduct(null)} disabled={isSaving}>
-                  ยกเลิก
-                </button>
-              </div>
+              <button onClick={() => setNewProduct(null)} disabled={isSaving}>
+                ยกเลิก
+              </button>
+              <button onClick={handleSaveNewProduct} disabled={isSaving}>
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {selectedProduct && (
           <div className="modal image-gallery-modal" onClick={handleCloseGallery}>
             <div className="modal-content image-gallery-content" onClick={(e) => e.stopPropagation()}>
               <h3>{selectedProduct.name}</h3>
               <p className="category">หมวดหมู่: {selectedProduct.category ? selectedProduct.category.name : 'ไม่ระบุ'}</p>
-              <p className={`stock ${selectedProduct.stock < 5 ? 'low' : 'normal'}`}>
+              <p className={`stock ${selectedProduct.stock < 2 ? 'low' : 'normal'}`}>
                 สต็อก: {selectedProduct.stock || 0}
               </p>
               <div className="image-gallery">
@@ -613,88 +670,86 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
                 <p>ไม่มีข้อมูลสถานะ</p>
               )}
             </div>
-              <>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>รหัสคำสั่งซื้อ</th>
-                      <th>ผู้ซื้อ</th>
-                      <th>สินค้า</th>
-                      <th>ยอดรวม</th>
-                      <th>วันที่สั่งซื้อ</th>
-                      <th>สถานะ</th>
-                      <th>การจัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.orders && orders.orders.length > 0 ? (
-                      orders.orders.map((order) => {
-                        const buyer = order.buyer || order.user || {};
-                        return (
-                          <tr key={order.id}>
-                            <td>{order.id || 'ไม่ระบุ'}</td>
-                            <td>
-                              {(buyer.fname || 'ไม่ระบุชื่อ')} {(buyer.lname || '')}
-                            </td>
-                            <td>
-                              {order.products && order.products.length > 0 ? (
-                                order.products.map((p) => (
-                                  <div key={p.productId || Math.random()}>
-                                    {p.name || 'ไม่ระบุชื่อสินค้า'} (x{p.quantity || 0})
-                                  </div>
-                                ))
-                              ) : (
-                                'ไม่มีสินค้า'
-                              )}
-                            </td>
-                            <td>{formatCurrency(order.total)}</td>
-                            <td>{order.createdAt ? formatDate(order.createdAt) : 'ไม่ระบุ'}</td>
-                            <td>
-                              <span className={`status-badge status-${order.status || 'pending'}`}>
-                                {order.status === 'pending' && 'รอดำเนินการ'}
-                                {order.status === 'completed' && 'สำเร็จ'}
-                                {order.status === 'cancelled' && 'ยกเลิก'}
-                                {!order.status && 'รอดำเนินการ'}
-                              </span>
-                            </td>
-                            <td>
-                              <span className="icon-edit" onClick={() => handleEditOrder(order)} />
-                              <span className="icon-delete" onClick={() => handleDeleteOrder(order.id)} />
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan="7">ไม่มีคำสั่งซื้อ</td>
+            <table>
+              <thead>
+                <tr>
+                  <th>รหัสคำสั่งซื้อ</th>
+                  <th>ผู้ขาย</th>
+                  <th>สินค้า</th>
+                  <th>ยอดรวม</th>
+                  <th>วันที่สั่งซื้อ</th>
+                  <th>สถานะ</th>
+                  <th>การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.orders && orders.orders.length > 0 ? (
+                  orders.orders.map((order) => {
+                    const buyer = order.buyer || order.user || {};
+                    return (
+                      <tr key={order.id}>
+                        <td>{order.id || 'ไม่ระบุ'}</td>
+                        <td>
+                          {(buyer.fname || 'ไม่ระบุชื่อ')} {(buyer.lname || '')}
+                        </td>
+                        <td>
+                          {order.products && order.products.length > 0 ? (
+                            order.products.map((p) => (
+                              <div key={p.productId || Math.random()}>
+                                {p.name || 'ไม่ระบุชื่อสินค้า'} (x{p.quantity || 0})
+                              </div>
+                            ))
+                          ) : (
+                            'ไม่มีสินค้า'
+                          )}
+                        </td>
+                        <td>{formatCurrency(order.total)}</td>
+                        <td>{order.createdAt ? formatDate(order.createdAt) : 'ไม่ระบุ'}</td>
+                        <td>
+                          <span className={`status-badge status-${order.status || 'pending'}`}>
+                            {order.status === 'pending' && 'รอดำเนินการ'}
+                            {order.status === 'completed' && 'สำเร็จ'}
+                            {order.status === 'cancelled' && 'ยกเลิก'}
+                            {!order.status && 'รอดำเนินการ'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="icon-edit" onClick={() => handleEditOrder(order)} />
+                          <span className="icon-delete" onClick={() => handleDeleteOrder(order.id)} />
+                        </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-                {editOrder && (
-                  <div className="modal">
-                    <div className="modal-content">
-                      <h3>แก้ไขคำสั่งซื้อ</h3>
-                      <select
-                        value={editOrder.status || 'pending'}
-                        onChange={(e) => setEditOrder({ ...editOrder, status: e.target.value })}
-                      >
-                        <option value="pending">รอดำเนินการ</option>
-                        <option value="completed">สำเร็จ</option>
-                        <option value="cancelled">ยกเลิก</option>
-                      </select>
-                      <div className="modal-actions">
-                        <button onClick={handleSaveOrder} disabled={isSaving}>
-                          {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-                        </button>
-                        <button onClick={() => setEditOrder(null)} disabled={isSaving}>
-                          ยกเลิก
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="7">ไม่มีคำสั่งซื้อ</td>
+                  </tr>
                 )}
-              </>
+              </tbody>
+            </table>
+            {editOrder && (
+              <div className="modal">
+                <div className="modal-content">
+                  <h3>แก้ไขคำสั่งซื้อ</h3>
+                  <select
+                    value={editOrder.status || 'pending'}
+                    onChange={(e) => setEditOrder({ ...editOrder, status: e.target.value })}
+                  >
+                    <option value="pending">รอดำเนินการ</option>
+                    <option value="completed">สำเร็จ</option>
+                    <option value="cancelled">ยกเลิก</option>
+                  </select>
+                  <div className="modal-actions">
+              <button onClick={() => setEditOrder(null)} disabled={isSaving}>
+                ยกเลิก
+              </button>
+              <button onClick={handleSaveOrder} disabled={isSaving}>
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
           </>
         ) : (
           <p>ไม่มีข้อมูลคำสั่งซื้อ</p>
@@ -705,6 +760,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
         <div className="modal">
           <div className="modal-content">
             <h3>แก้ไขโปรไฟล์</h3>
+            <h4>ชื่อ - นามสกุล</h4>
             <input
               type="text"
               value={editProfile.fname || ''}
@@ -717,6 +773,50 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
               onChange={(e) => setEditProfile({ ...editProfile, lname: e.target.value })}
               placeholder="นามสกุล"
             />
+            
+            {/* ที่อยู่ */}
+            <h4>ที่อยู่</h4>
+            <input
+              type="text"
+              value={editProfile.address?.street || ''}
+              onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, street: e.target.value } })}
+              placeholder="ถนน เขต ตำบง"
+            />
+            <input
+              type="text"
+              value={editProfile.address?.city || ''}
+              onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, city: e.target.value } })}
+              placeholder="อำเภอ"
+            />
+            <div className="form-group">
+              <label>จังหวัด</label>
+              <select
+                value={editProfile.address?.province || ''}
+                onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, province: e.target.value } })}
+                required
+              >
+                <option value="">เลือกจังหวัด</option>
+                {provinces.map((prov, index) => (
+                  <option key={index} value={prov}>{prov}</option>
+                ))}
+              </select>
+            </div>
+            <input
+              type="text"
+              value={editProfile.address?.postalCode || ''}
+              onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, postalCode: e.target.value } })}
+              placeholder="รหัสไปรษณีย์"
+            />
+            <div className="form-group">
+              <label>ประเทศ</label>
+              <input
+                type="text"
+                value="Thailand"
+                disabled
+                style={{ backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
+              />
+            </div>
+
             <input type="file" accept="image/*" onChange={handleImageChange} />
             {editProfile.previewImage && (
               <div className="image-preview-container">
@@ -724,11 +824,11 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
               </div>
             )}
             <div className="modal-actions">
-              <button onClick={handleSaveProfile} disabled={isSaving}>
-                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-              </button>
               <button onClick={() => setEditProfile(null)} disabled={isSaving}>
                 ยกเลิก
+              </button>
+              <button onClick={handleSaveProfile} disabled={isSaving}>
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
               </button>
             </div>
           </div>
@@ -762,8 +862,8 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
               rows="5"
             />
             <div className="modal-actions">
-              <button onClick={handleSubmitReport}>ส่งรายงาน</button>
               <button onClick={() => setIsReportModalOpen(false)}>ยกเลิก</button>
+              <button onClick={handleSubmitReport}>ส่งรายงาน</button>
             </div>
           </div>
         </div>

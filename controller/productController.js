@@ -3,7 +3,7 @@ const cloudinary = require('cloudinary').v2;
 
 const uploadProduct = async (req, res) => {
   try {
-    const { name, price, description, category, stock } = req.body;
+    const { name, price, description, category, stock, province } = req.body; // รับค่า province จาก body
     if (!name || !price || !description || !category || !stock) {
       return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อ, ราคา, รายละเอียด, หมวดหมู่ และสต็อก' });
     }
@@ -26,14 +26,16 @@ const uploadProduct = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่' });
     }
 
+    // เช็คว่าผู้ขายมีที่อยู่หรือไม่ หากไม่มี ให้ใช้ province จาก req.body
     const product = new Product({
       name,
       price: parseFloat(price),
       description,
       stock: parseInt(stock) || 0,
-      category: category, // ต้องเป็น ObjectId ของ Category
+      category, // ต้องเป็น ObjectId ของ Category
       product_image_urls: productImageUrls,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      province: province || req.user.address?.province || '' // ใช้ province จาก body หรือจากผู้ขาย
     });
 
     const savedProduct = await product.save();
@@ -48,7 +50,8 @@ const uploadProduct = async (req, res) => {
         description: savedProduct.description,
         category: savedProduct.category,
         stock: savedProduct.stock,
-        product_image_urls: savedProduct.product_image_urls
+        product_image_urls: savedProduct.product_image_urls,
+        province: savedProduct.province
       }
     });
   } catch (err) {
@@ -96,7 +99,7 @@ const deleteProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { name, price, description, category, stock, deletedImages } = req.body;
+    const { name, price, description, category, stock, deletedImages, province } = req.body; // รับค่า province จาก body
     const userId = req.user.id;
     const role = req.user.role;
 
@@ -115,6 +118,7 @@ const updateProduct = async (req, res) => {
     if (description) updateData.description = description;
     if (category) updateData.category = category; // ต้องเป็น ObjectId ของ Category
     if (stock) updateData.stock = parseInt(stock);
+    if (province) updateData.province = province; // อัปเดต province
 
     let updatedImageUrls = [...(product.product_image_urls || [])];
 
@@ -173,7 +177,8 @@ const updateProduct = async (req, res) => {
         description: updatedProduct.description,
         category: updatedProduct.category,
         stock: updatedProduct.stock,
-        product_image_urls: updatedProduct.product_image_urls
+        product_image_urls: updatedProduct.product_image_urls,
+        province: updatedProduct.province // ส่งข้อมูล province กลับด้วย
       }
     });
   } catch (err) {
@@ -184,7 +189,6 @@ const updateProduct = async (req, res) => {
 
 const getProducts = async (req, res) => {
   try {
-    // ตรวจสอบ req.user ก่อนใช้งาน
     if (!req.user) {
       return res.status(401).json({ status: 'error', message: 'ไม่มีการระบุผู้ใช้ใน request' });
     }
@@ -193,10 +197,14 @@ const getProducts = async (req, res) => {
     const role = req.user.role;
     const categoryId = req.query.category; // รับ categoryId จาก query parameter
 
-    let productsQuery = Product.find().populate('createdBy', 'email fname lname').populate('category', 'name'); // Populate category ด้วย
+    let productsQuery = Product.find()
+      .populate('createdBy', 'email fname lname address') // populate address เพื่อดึงที่อยู่
+      .populate('category', 'name'); 
+
     if (role !== 'admin') {
       productsQuery = productsQuery.where('createdBy', userId);
     }
+
     if (categoryId) {
       productsQuery = productsQuery.where('category', categoryId);
     }
@@ -211,14 +219,15 @@ const getProducts = async (req, res) => {
       status: 'OK',
       message: 'ดึงข้อมูลสินค้าสำเร็จ',
       products: products.map(product => {
-        // ตรวจสอบและจัดการค่า undefined
         const productId = product._id ? product._id.toString() : null;
         const createdBy = product.createdBy && product.createdBy._id ? {
           id: product.createdBy._id.toString(),
           email: product.createdBy.email || 'ไม่ระบุ',
           fname: product.createdBy.fname || 'ไม่ระบุ',
-          lname: product.createdBy.lname || ''
-        } : { id: null, email: 'ไม่ระบุ', fname: 'ไม่ระบุ', lname: '' };
+          lname: product.createdBy.lname || '',
+          address: product.createdBy.address || {} // เพิ่มที่อยู่
+        } : { id: null, email: 'ไม่ระบุ', fname: 'ไม่ระบุ', lname: '', address: {} };
+
         const category = product.category ? {
           id: product.category._id ? product.category._id.toString() : null,
           name: product.category.name || 'ไม่ระบุ'
@@ -233,13 +242,14 @@ const getProducts = async (req, res) => {
           stock: product.stock || 0,
           product_image_urls: product.product_image_urls || [],
           createdBy: createdBy,
-          createdAt: product.createdAt
+          createdAt: product.createdAt,
+          province: createdBy.address.province || 'ไม่ระบุ' // เพิ่มข้อมูล province
         };
       })
     };
     res.json(response);
   } catch (err) {
-    console.error('Error in getProducts:', err); // เก็บ log ข้อผิดพลาด
+    console.error('Error in getProducts:', err);
     res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า', error: err.message });
   }
 };

@@ -1,9 +1,11 @@
-// frontend/src/index.js
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles.css';
+
+// ตั้งค่า title
+document.title = 'POS';
 
 ReactDOM.render(
   <BrowserRouter>

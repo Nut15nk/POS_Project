@@ -127,7 +127,7 @@ const resetPasswordConfirm = async (req, res) => {
 // Register User
 const registerUser = async (req, res) => {
   try {
-    const { email, password, fname, lname } = req.body;
+    const { email, password, fname, lname, address } = req.body;
     if (!email || !password || !fname || !lname) {
       return res.status(400).json({ status: 'error', message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
     }
@@ -138,7 +138,19 @@ const registerUser = async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hash, fname, lname });
+    const user = new User({
+      email,
+      password: hash,
+      fname,
+      lname,
+      address: {
+        street: address?.street || '',
+        city: address?.city || '',
+        province: address?.province || '',
+        postalCode: address?.postalCode || '',
+        country: address?.country || '',
+      },
+    });
     const savedUser = await user.save();
     const token = jwt.sign({ id: savedUser._id, email, role: savedUser.role }, secret, { expiresIn: '1h' });
     res.status(201).json({ status: 'OK', message: 'สมัครสมาชิกสำเร็จ', token });
@@ -198,14 +210,22 @@ const userprofile = async (req, res) => {
         fname: user.fname,
         lname: user.lname,
         role: user.role,
-        profile_image_url: user.profile_image_url || null
-      }
+        profile_image_url: user.profile_image_url || null,
+        address: {
+          street: user.address?.street || '',
+          city: user.address?.city || '',
+          province: user.address?.province || '',
+          postalCode: user.address?.postalCode || '',
+          country: user.address?.country || '',
+        },
+      },
     });
   } catch (err) {
     console.error('Profile error:', err);
     res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
+
 
 // Update User Profile
 const updateUserProfile = async (req, res) => {
@@ -215,12 +235,24 @@ const updateUserProfile = async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'ไม่ได้รับการยืนยันตัวตน' });
     }
 
-    const { fname, lname } = req.body;
+    const { fname, lname, address } = req.body;
     if (!fname || !lname) {
       return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อและนามสกุล' });
     }
 
     const updateData = { fname, lname };
+
+    // อัปเดต address ทั้งหมด
+    if (address) {
+      updateData.address = {
+        street: address.street || '',
+        city: address.city || '',
+        province: address.province || '',
+        postalCode: address.postalCode || '',
+        country: address.country || '',
+      };
+    }
+
     if (req.file) {
       updateData.profile_image_url = req.file.path;
     }
@@ -237,6 +269,7 @@ const updateUserProfile = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาด', error: err.message });
   }
 };
+
 
 // Upload Profile Image
 const uploadProfileImage = (req, res) => {
@@ -293,15 +326,22 @@ const getUsers = async (req, res) => {
         currentPage: page,
         totalPages: Math.ceil(totalUsers / limit),
         totalUsers,
-        limit
+        limit,
       },
       users: users.map(user => ({
         id: user._id,
         email: user.email,
         fname: user.fname,
         lname: user.lname,
-        role: user.role
-      }))
+        role: user.role,
+        address: {
+          street: user.address?.street || '',
+          city: user.address?.city || '',
+          province: user.address?.province || '',
+          postalCode: user.address?.postalCode || '',
+          country: user.address?.country || '',
+        },
+      })),
     });
   } catch (err) {
     console.error('Get users error:', err);
@@ -317,13 +357,23 @@ const updateUser = async (req, res) => {
     }
 
     const { userId } = req.params;
-    const { email, fname, lname, role } = req.body;
+    const { email, fname, lname, role, address } = req.body;
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { email, fname, lname, role },
-      { new: true, runValidators: true }
-    ).select('-password -__v');
+    const updateData = { email, fname, lname, role };
+
+    if (address) {
+      updateData.address = {
+        street: address.street || '',
+        city: address.city || '',
+        province: address.province || '',
+        postalCode: address.postalCode || '',
+        country: address.country || '',
+      };
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateData }, { new: true, runValidators: true }).select(
+      '-password -__v'
+    );
 
     if (!updatedUser) {
       return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้' });
