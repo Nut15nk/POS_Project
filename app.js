@@ -45,6 +45,7 @@ const {
   createReport,
   getReports,
   updateReport,
+  deleteReport,
 } = require('./controller/reportController');
 const { getCategories, createCategory, deleteCategory, updateCategory } = require('./controller/categoryController');
 
@@ -159,6 +160,7 @@ app.get('/orders/seller', authMiddleware, getSellerOrderReport);
 app.post('/reports', authMiddleware, createReport);
 app.get('/reports', authMiddleware, getReports);
 app.put('/reports/:reportId', authMiddleware, updateReport);
+app.delete('/reports/:reportId', authMiddleware, deleteReport);
 
 // Category Routes
 app.post('/categories', authMiddleware, createCategory);

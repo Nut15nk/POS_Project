@@ -119,8 +119,36 @@ const updateReport = async (req, res) => {
   }
 };
 
+const deleteReport = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ status: 'error', message: 'เฉพาะแอดมินเท่านั้นที่สามารถลบรายงานได้' });
+    }
+
+
+    const report = await Report.findById(reportId);
+    if (!report) {
+      return res.status(404).json({ status: 'error', message: 'ไม่พบรายงาน' });
+    }
+
+    await Report.findByIdAndDelete(reportId);
+
+    res.json({
+      status: 'OK',
+      message: 'ลบรายงานสำเร็จ',
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: 'เกิดข้อผิดพลาดในการลบรายงาน', error: err.message });
+  }
+};
+
+
 module.exports = {
   createReport,
   getReports,
   updateReport,
+  deleteReport,
 };

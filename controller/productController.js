@@ -195,10 +195,10 @@ const getProducts = async (req, res) => {
 
     const userId = req.user.id;
     const role = req.user.role;
-    const categoryId = req.query.category; // รับ categoryId จาก query parameter
+    const categoryId = req.query.category;
 
     let productsQuery = Product.find()
-      .populate('createdBy', 'email fname lname address') // populate address เพื่อดึงที่อยู่
+      .populate('createdBy', 'email fname lname address')
       .populate('category', 'name'); 
 
     if (role !== 'admin') {
