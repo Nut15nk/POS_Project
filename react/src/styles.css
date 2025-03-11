@@ -1005,6 +1005,8 @@ tr:hover {
   cursor: pointer;
   font-size: 0.9rem;
   transition: background-color 0.3s;
+  max-width: 80px; /* เพิ่มความกว้างสูงสุด */
+  white-space: nowrap; /* ป้องกันการตัดบรรทัด */
 }
 
 .add-category-section button:hover {

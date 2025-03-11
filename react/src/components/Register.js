@@ -6,6 +6,7 @@ import { register } from '../api';
 function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fname, setFname] = useState('');
   const [lname, setLname] = useState('');
   const [street, setStreet] = useState('');
@@ -40,6 +41,11 @@ function Register() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    if (password !== confirmPassword) {
+      setError('รหัสผ่านไม่ตรงกัน');
+      setLoading(false);
+      return;
+    }
     try {
       const address = {
         street,
@@ -82,6 +88,16 @@ function Register() {
           />
         </div>
         <div className="form-group">
+          <label>ยืนยันรหัสผ่าน</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            placeholder="กรุณากรอกรหัสผ่านอีกครั้ง"
+          />
+        </div>
+        <div className="form-group">
           <label>ชื่อ</label>
           <input
             type="text"
@@ -109,6 +125,7 @@ function Register() {
               type="text"
               value={street}
               onChange={(e) => setStreet(e.target.value)}
+              required
               placeholder="กรุณากรอกชื่อถนน เขต ตำบล"
             />
           </div>
@@ -118,6 +135,7 @@ function Register() {
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
+              required
               placeholder="กรุณากรอกอำเภอหรือเมือง"
             />
           </div>
@@ -142,6 +160,7 @@ function Register() {
               type="text"
               value={postalCode}
               onChange={(e) => setPostalCode(e.target.value)}
+              required
               placeholder="กรุณากรอกรหัสไปรษณีย์"
             />
           </div>

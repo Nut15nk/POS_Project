@@ -56,6 +56,15 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     "อุบลราชธานี", "อำนาจเจริญ"
   ];
 
+  const handleError = (errorMessage) => {
+    setError(errorMessage);
+    setEditProduct(null);
+    setNewProduct(null);
+    setEditOrder(null);
+    setEditProfile(null);
+    setIsReportModalOpen(false);
+  };
+
   const fetchData = async (userRole) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -148,10 +157,10 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       updateUser(profileRes.user || user);
       setCategories(categoryRes.categories || []);
   
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (err) {
       console.error('Fetch Error:', err);
-      setError(err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      handleError(err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
       if (err.response?.status === 401) {
         localStorage.removeItem('token');
         setAuthToken(null);
@@ -238,7 +247,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       fetchData(user.role);
     } catch (err) {
       console.error('Update Product Error:', err);
-      setError('ไม่สามารถแก้ไขสินค้าได้: ' + (err.response?.data?.message || err.message));
+      handleError('ไม่สามารถแก้ไขสินค้าได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
     }
@@ -272,7 +281,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       setNewProduct(null);
       fetchData(user.role);
     } catch (err) {
-      setError('ไม่สามารถเพิ่มสินค้าได้: ' + (err.response?.data?.message || err.message));
+      handleError('ไม่สามารถเพิ่มสินค้าได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
     }
@@ -286,7 +295,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       setEditOrder(null);
       fetchData(user.role);
     } catch (err) {
-      setError('ไม่สามารถแก้ไขคำสั่งซื้อได้: ' + (err.response?.data?.message || err.message));
+      handleError('ไม่สามารถแก้ไขคำสั่งซื้อได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
     }
@@ -319,7 +328,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       updateUser(updatedProfile.user);
       fetchData(user.role);
     } catch (err) {
-      setError('ไม่สามารถแก้ไขโปรไฟล์ได้: ' + (err.response?.data?.message || err.message));
+      handleError('ไม่สามารถแก้ไขโปรไฟล์ได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
     }
@@ -410,13 +419,22 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       setReportMessage('');
       alert('ส่งรายงานปัญหาสำเร็จ');
     } catch (err) {
-      setError('ไม่สามารถส่งรายงานได้: ' + (err.response?.data?.message || err.message));
+      handleError('ไม่สามารถส่งรายงานได้: ' + (err.response?.data?.message || err.message));
     }
   };
 
   
 return (
   <div className="dashboard" style={{ overflow: 'hidden' }}>
+    {error && (
+      <div className="error-modal" style={{ zIndex: 1000 }}>
+        <div className="error-modal-content">
+          <h3>เกิดข้อผิดพลาด</h3>
+          <p>{error}</p>
+          <button onClick={() => setError('')}>ตกลง</button>
+        </div>
+      </div>
+    )}
     {loading && (
       <div className="loading-overlay">
         <div className="loading">กำลังโหลด...</div>
@@ -647,7 +665,6 @@ return (
         <h2>รายงานคำสั่งซื้อ</h2>
         {orders ? (
           <>
-            {user.role === 'seller' && (
               <div className="revenue-summary">
                 <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}ทั้งหมด: {formatCurrency(orders.totalRevenue)}</p>
                 <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}วันนี้: {formatCurrency(orders.dailyRevenue)}</p>
@@ -655,7 +672,6 @@ return (
                 <p>คำสั่งซื้อที่เสร็จสิ้น: {orders.completedOrders} รายการ</p>
                 <p>คำสั่งซื้อที่รอดำเนินการ: {orders.pendingOrders} รายการ</p>
               </div>
-            )}
             <div className="status-summary">
               <h3>สรุปสถานะ</h3>
               {orders.statusSummary ? (
@@ -766,12 +782,14 @@ return (
               value={editProfile.fname || ''}
               onChange={(e) => setEditProfile({ ...editProfile, fname: e.target.value })}
               placeholder="ชื่อ"
+              required
             />
             <input
               type="text"
               value={editProfile.lname || ''}
               onChange={(e) => setEditProfile({ ...editProfile, lname: e.target.value })}
               placeholder="นามสกุล"
+              required
             />
             
             {/* ที่อยู่ */}
@@ -781,12 +799,14 @@ return (
               value={editProfile.address?.street || ''}
               onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, street: e.target.value } })}
               placeholder="ถนน เขต ตำบง"
+              required
             />
             <input
               type="text"
               value={editProfile.address?.city || ''}
               onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, city: e.target.value } })}
               placeholder="อำเภอ"
+              required
             />
             <div className="form-group">
               <label>จังหวัด</label>
@@ -814,6 +834,7 @@ return (
                 value="Thailand"
                 disabled
                 style={{ backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
+                required
               />
             </div>
 
@@ -860,6 +881,7 @@ return (
               onChange={(e) => setReportMessage(e.target.value)}
               placeholder="กรุณากรอกข้อความเพื่อรายงานปัญหา..."
               rows="5"
+              required
             />
             <div className="modal-actions">
               <button onClick={() => setIsReportModalOpen(false)}>ยกเลิก</button>
