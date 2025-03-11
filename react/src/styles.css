@@ -19,12 +19,12 @@ body {
 
 /* สีหลัก */
 :root {
-  --primary-color: #007bff;
-  --secondary-color: #6c757d;
+  --primary-color: #007bff; /* สีหลักสำหรับปุ่ม เช่น แก้ไขโปรไฟล์ */
+  --secondary-color: #6c757d; /* สีรองสำหรับข้อความหรือปุ่มที่แตกต่าง */
   --success-color: #28a745; /* สีเขียวสำหรับบันทึก/ยืนยัน */
-  --danger-color: #dc3545;  /* สีแดงสำหรับยกเลิก */
-  --light-bg: #ffffff;
-  --border-color: #e0e0e0;
+  --danger-color: #dc3545; /* สีแดงสำหรับยกเลิก */
+  --light-bg: #ffffff; /* พื้นหลังสีขาว */
+  --border-color: #e0e0e0; /* เส้นขอบ */
 }
 
 /* Navbar */
@@ -251,7 +251,7 @@ body {
 button {
   width: 100%;
   padding: 12px;
-  background-color: var(--primary-color);
+  background-color: var(--primary-color); /* ใช้สีหลักให้สอดคล้องกับปุ่มแก้ไขโปรไฟล์ */
   color: white;
   border: none;
   border-radius: 6px;
@@ -261,7 +261,7 @@ button {
 }
 
 button:hover {
-  background-color: #0056b3;
+  background-color: #0056b3; /* เปลี่ยนสีเมื่อ hover ให้เข้มขึ้น */
 }
 
 button:disabled {
@@ -998,7 +998,7 @@ tr:hover {
 
 .add-category-section button {
   padding: 6px 12px;
-  background-color: var(--success-color); /* ปุ่มเพิ่ม - สีเขียว */
+  background-color: var(--primary-color); /* ใช้สีหลักเหมือนปุ่มแก้ไขโปรไฟล์ */
   color: white;
   border: none;
   border-radius: 4px;
@@ -1008,7 +1008,7 @@ tr:hover {
 }
 
 .add-category-section button:hover {
-  background-color: #218838;
+  background-color: #0056b3; /* เปลี่ยนสีเมื่อ hover ให้เข้มขึ้น */
 }
 
 /* Category List */
@@ -1038,16 +1038,17 @@ tr:hover {
 
 .category-list button {
   padding: 5px 10px;
-  background-color: var(--success-color); /* ปุ่มแก้ไข - สีเขียว */
+  background-color: var(--primary-color); /* ใช้สีหลักสำหรับปุ่มแก้ไขและลบ */
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
+  margin: 0 5px;
 }
 
 .category-list button:hover {
-  background-color: #218838;
+  background-color: #0056b3; /* เปลี่ยนสีเมื่อ hover */
 }
 
 /* Category Products */
@@ -1106,7 +1107,7 @@ tr:hover {
 
 .category-products button {
   padding: 6px 12px;
-  background-color: var(--secondary-color);
+  background-color: var(--secondary-color); /* ใช้สีรองสำหรับปุ่มปิด */
   color: white;
   border: none;
   border-radius: 4px;
@@ -1236,7 +1237,8 @@ tr:hover {
     overflow-x: auto;
     white-space: nowrap;
   }
-  th, td {
+  th,
+  td {
     padding: 8px 10px;
     min-width: 100px;
   }
@@ -1386,7 +1388,8 @@ tr:hover {
     font-size: 0.75rem;
     padding: 3px 6px;
   }
-  th, td {
+  th,
+  td {
     padding: 6px 8px;
     font-size: 0.75rem;
   }
@@ -1444,7 +1447,7 @@ tr:hover {
     padding: 6px 12px;
     width: auto;
     max-width: 80px;
-    background-color: var(--success-color);
+    background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: 4px;
@@ -1454,7 +1457,7 @@ tr:hover {
     white-space: nowrap;
   }
   .add-category-section button:hover {
-    background-color: #218838;
+    background-color: #0056b3;
   }
   .category-products {
     max-width: 100%;
