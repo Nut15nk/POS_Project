@@ -118,7 +118,7 @@ function Register() {
           />
         </div>
         <div className="address-group">
-          <h4>ที่อยู่</h4>
+          <h4>ที่อยู่ของร้าน</h4>
           <div className="form-group">
             <label>ถนน</label>
             <input

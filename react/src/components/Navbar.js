@@ -47,7 +47,6 @@ function Navbar({ user, onLogout, onEditProfile }) {
         <button onClick={onLogout}>ออกจากระบบ</button>
       </div>
 
-      {/* Sidebar Menu */}
       {isMenuOpen && (
         <div className="sidebar" ref={sidebarRef}>
           <div className="sidebar-header">

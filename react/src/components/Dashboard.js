@@ -9,8 +9,6 @@ import {
   updateProduct, 
   updateOrder,
   uploadProduct,
-  getProfile,
-  updateProfile,
   setAuthToken,
   createReport,
   getCategories
@@ -18,7 +16,7 @@ import {
 import ProductCard from './ProductCard';
 import defaultAvatar from './default-avatar.png';
 
-function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
+function Dashboard({ user, updateUser }) {
   const [myProducts, setMyProducts] = useState([]);
   const [othersProducts, setOthersProducts] = useState([]);
   const [orders, setOrders] = useState(null);
@@ -28,7 +26,6 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [editOrder, setEditOrder] = useState(null);
   const [newProduct, setNewProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [currentUser, setCurrentUser] = useState(user);
   const [isSaving, setIsSaving] = useState(false);
   const [deletedImages, setDeletedImages] = useState([]);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -36,32 +33,11 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
 
-  // รายชื่อ 77 จังหวัดของประเทศไทย
-  const provinces = [
-    "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร",
-    "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท",
-    "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง",
-    "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม",
-    "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส",
-    "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์",
-    "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พังงา", "พัทลุง",
-    "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่",
-    "พะเยา", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน",
-    "ยะลา", "ยโสธร", "ร้อยเอ็ด", "ระนอง", "ระยอง",
-    "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย",
-    "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ",
-    "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี",
-    "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย",
-    "หนองบัวลำภู", "อ่างทอง", "อุดรธานี", "อุทัยธานี", "อุตรดิตถ์",
-    "อุบลราชธานี", "อำนาจเจริญ"
-  ];
-
   const handleError = (errorMessage) => {
     setError(errorMessage);
     setEditProduct(null);
     setNewProduct(null);
     setEditOrder(null);
-    setEditProfile(null);
     setIsReportModalOpen(false);
   };
 
@@ -76,43 +52,37 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     setLoading(true);
     setError('');
     try {
-      const [productRes, orderRes, profileRes, categoryRes] = await Promise.all([
+      const [productRes, orderRes, categoryRes] = await Promise.all([
         getProducts(),
         userRole === 'admin' ? getOrderReport() : getSellerOrders(),
-        getProfile(),
         getCategories(),
       ]);
   
-      console.log('Product Response (Raw):', productRes); // ตรวจสอบข้อมูลดิบที่นี่
-  
-      const myId = profileRes.user._id || profileRes.user.id;
+      const myId = user._id || user.id;
       if (!myId) throw new Error('ไม่พบ ID ผู้ใช้จากโปรไฟล์');
   
       const cleanProducts = Array.isArray(productRes.products)
-        ? productRes.products.map((p) => {
-            console.log('Raw Product:', p); // ตรวจสอบสินค้าแต่ละรายการ
-            return {
-              id: p.id,
-              name: p.name,
-              price: p.price,
-              description: p.description,
-              stock: p.stock || 0,
-              category: p.category || null,
-              product_image_urls: p.product_image_urls || [p.product_image_url] || [],
-              createdBy: {
-                id: p.createdBy?.id || p.createdBy?._id,
-                fname: p.createdBy?.fname || '',
-                lname: p.createdBy?.lname || '',
-                address: {
-                  province: p.createdBy?.address?.province || '', // ตรวจสอบว่ามีข้อมูลไหม
-                  street: p.createdBy?.address?.street || '',
-                  city: p.createdBy?.address?.city || '',
-                  postalCode: p.createdBy?.address?.postalCode || '',
-                  country: p.createdBy?.address?.country || '',
-                },
+        ? productRes.products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            description: p.description,
+            stock: p.stock || 0,
+            category: p.category || null,
+            product_image_urls: p.product_image_urls || [p.product_image_url] || [],
+            createdBy: {
+              id: p.createdBy?.id || p.createdBy?._id,
+              fname: p.createdBy?.fname || '',
+              lname: p.createdBy?.lname || '',
+              address: {
+                province: p.createdBy?.address?.province || '',
+                street: p.createdBy?.address?.street || '',
+                city: p.createdBy?.address?.city || '',
+                postalCode: p.createdBy?.address?.postalCode || '',
+                country: p.createdBy?.address?.country || '',
               },
-            };
-          })
+            },
+          }))
         : [];
   
       const myProds = cleanProducts.filter(
@@ -153,8 +123,6 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       }
   
       setOrders(processedOrders);
-      setCurrentUser(profileRes.user || user);
-      updateUser(profileRes.user || user);
       setCategories(categoryRes.categories || []);
   
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -177,7 +145,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       return;
     }
     fetchData(user.role);
-  }, [user?.role, navigate]);
+  }, [user?.role, navigate, user]);
 
   const handleDeleteProduct = async (productId) => {
     if (window.confirm('ยืนยันการลบสินค้านี้?')) {
@@ -237,16 +205,13 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       }
       if (deletedImages.length > 0) {
         formData.append('deletedImages', JSON.stringify(deletedImages));
-        console.log('Sending deletedImages:', deletedImages);
       }
 
-      const response = await updateProduct(editProduct.id, formData);
-      console.log('Update Product Response:', response);
+      await updateProduct(editProduct.id, formData);
       setEditProduct(null);
       setDeletedImages([]);
       fetchData(user.role);
     } catch (err) {
-      console.error('Update Product Error:', err);
       handleError('ไม่สามารถแก้ไขสินค้าได้: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
@@ -263,12 +228,7 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
       formData.append('description', newProduct.description);
       formData.append('category', newProduct.category ? newProduct.category.id : '');
       formData.append('stock', newProduct.stock);
-      
-      // ส่ง province ของผู้ขาย (จาก currentUser.address.province)
-      if (currentUser.address) {
-        formData.append('province', currentUser.address.province || '');
-      }
-      
+      formData.append('province', user.address?.province || '');
       if (newProduct.newImages && newProduct.newImages.length > 0) {
         newProduct.newImages.forEach((image) => {
           formData.append('product_images', image);
@@ -301,63 +261,6 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     }
   };
 
-  const handleSaveProfile = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    try {
-      const formData = new FormData();
-      formData.append('fname', editProfile.fname);
-      formData.append('lname', editProfile.lname);
-
-      // เพิ่มที่อยู่ (address)
-      if (editProfile.address) {
-        formData.append('address[street]', editProfile.address.street || '');
-        formData.append('address[city]', editProfile.address.city || '');
-        formData.append('address[province]', editProfile.address.province || '');
-        formData.append('address[postalCode]', editProfile.address.postalCode || '');
-        formData.append('address[country]', 'Thailand'); // บังคับให้เป็น Thailand
-      }
-
-      if (editProfile.newImage) {
-        formData.append('profile_image', editProfile.newImage);
-      }
-
-      const updatedProfile = await updateProfile(formData);
-      setEditProfile(null);
-      setCurrentUser(updatedProfile.user);
-      updateUser(updatedProfile.user);
-      fetchData(user.role);
-    } catch (err) {
-      handleError('ไม่สามารถแก้ไขโปรไฟล์ได้: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const previewImage = URL.createObjectURL(file);
-
-    if (editProfile) {
-      setEditProfile({ ...editProfile, previewImage, newImage: file });
-    } else if (editProduct) {
-      setEditProduct({ 
-        ...editProduct, 
-        previewImages: [...editProduct.previewImages, previewImage], 
-        newImages: [...editProduct.newImages, file] 
-      });
-    } else if (newProduct) {
-      setNewProduct({ 
-        ...newProduct, 
-        previewImages: [...newProduct.previewImages, previewImage], 
-        newImages: [...newProduct.newImages, file] 
-      });
-    }
-    e.target.value = '';
-  };
-
   const handleRemoveImage = (index, context) => {
     if (context === 'editProduct') {
       const newPreviewImages = [...editProduct.previewImages];
@@ -370,7 +273,6 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
         newImages.splice(index - originalImageCount, 1);
       } else {
         setDeletedImages((prev) => [...prev, removedImage]);
-        console.log('Removed original image:', removedImage);
       }
       setEditProduct({ ...editProduct, previewImages: newPreviewImages, newImages });
     } else if (context === 'newProduct') {
@@ -383,7 +285,6 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
   };
 
   const handleProductClick = (product) => {
-    console.log('Selected Product:', product);
     setSelectedProduct(product);
   };
 
@@ -423,34 +324,33 @@ function Dashboard({ user, editProfile, setEditProfile, updateUser }) {
     }
   };
 
-  
-return (
-  <div className="dashboard" style={{ overflow: 'hidden' }}>
-    {error && (
-      <div className="error-modal" style={{ zIndex: 1000 }}>
-        <div className="error-modal-content">
-          <h3>เกิดข้อผิดพลาด</h3>
-          <p>{error}</p>
-          <button onClick={() => setError('')}>ตกลง</button>
+  return (
+    <div className="dashboard" style={{ overflow: 'hidden' }}>
+      {error && (
+        <div className="error-modal" style={{ zIndex: 1000 }}>
+          <div className="error-modal-content">
+            <h3>เกิดข้อผิดพลาด</h3>
+            <p>{error}</p>
+            <button onClick={() => setError('')}>ตกลง</button>
+          </div>
         </div>
+      )}
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading">กำลังโหลด...</div>
+        </div>
+      )}
+      
+      <h1>แดชบอร์ด{user?.role === 'admin' ? 'แอดมิน' : 'ผู้ขาย'}</h1>
+      <div className="profile">
+        <img 
+          src={user?.profile_image_url || defaultAvatar} 
+          alt="Profile" 
+        />
+        <p>
+          ยินดีต้อนรับ, {user?.fname || 'ไม่ระบุชื่อ'} {user?.lname || ''}
+        </p>
       </div>
-    )}
-    {loading && (
-      <div className="loading-overlay">
-        <div className="loading">กำลังโหลด...</div>
-      </div>
-    )}
-    
-    <h1>แดชบอร์ด{user.role === 'admin' ? 'แอดมิน' : 'ผู้ขาย'}</h1>
-    <div className="profile">
-      <img 
-        src={currentUser.profile_image_url || defaultAvatar} 
-        alt="Profile" 
-      />
-      <p>
-        ยินดีต้อนรับ, {(currentUser.fname || 'ไม่ระบุชื่อ')} {(currentUser.lname || '')}
-      </p>
-    </div>
 
       <section className="products">
         <div className="products-header">
@@ -459,20 +359,17 @@ return (
         </div>
         <div className="product-list" style={{ overflow: 'hidden', maxHeight: 'none' }}>
           {myProducts.length > 0 ? (
-            myProducts.map((product) => {
-              console.log('Product sent to ProductCard:', product);
-              return (
-                <div key={product.id} className="product-item">
-                  <div onClick={() => handleProductClick(product)}>
-                    <ProductCard product={product} />
-                  </div>
-                  <div className="product-actions">
-                    <span className="icon-edit" onClick={() => handleEditProduct(product)} />
-                    <span className="icon-delete" onClick={() => handleDeleteProduct(product.id)} />
-                  </div>
+            myProducts.map((product) => (
+              <div key={product.id} className="product-item">
+                <div onClick={() => handleProductClick(product)}>
+                  <ProductCard product={product} />
                 </div>
-              );
-            })
+                <div className="product-actions">
+                  <span className="icon-edit" onClick={() => handleEditProduct(product)} />
+                  <span className="icon-delete" onClick={() => handleDeleteProduct(product.id)} />
+                </div>
+              </div>
+            ))
           ) : (
             <p>ไม่มีสินค้า</p>
           )}
@@ -518,7 +415,17 @@ return (
                 placeholder="จำนวนสต็อก"
                 min="0"
               />
-              <input type="file" accept="image/*" onChange={handleImageChange} />
+              <input type="file" accept="image/*" onChange={(e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const previewImage = URL.createObjectURL(file);
+                setEditProduct({ 
+                  ...editProduct, 
+                  previewImages: [...editProduct.previewImages, previewImage], 
+                  newImages: [...editProduct.newImages, file] 
+                });
+                e.target.value = '';
+              }} />
               {editProduct.previewImages && editProduct.previewImages.length > 0 && (
                 <div className="image-preview-container">
                   {editProduct.previewImages.map((img, index) => (
@@ -535,17 +442,16 @@ return (
                 </div>
               )}
               <div className="modal-actions">
-              <button onClick={() => setEditProduct(null)} disabled={isSaving}>
-                ยกเลิก
-              </button>
-              <button onClick={handleSaveProduct} disabled={isSaving}>
-                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-              </button>
+                <button onClick={() => setEditProduct(null)} disabled={isSaving}>
+                  ยกเลิก
+                </button>
+                <button onClick={handleSaveProduct} disabled={isSaving}>
+                  {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
+        )}
 
         {newProduct && (
           <div className="modal">
@@ -587,7 +493,17 @@ return (
                 placeholder="จำนวนสต็อก"
                 min="0"
               />
-              <input type="file" accept="image/*" onChange={handleImageChange} />
+              <input type="file" accept="image/*" onChange={(e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const previewImage = URL.createObjectURL(file);
+                setNewProduct({ 
+                  ...newProduct, 
+                  previewImages: [...newProduct.previewImages, previewImage], 
+                  newImages: [...newProduct.newImages, file] 
+                });
+                e.target.value = '';
+              }} />
               {newProduct.previewImages && newProduct.previewImages.length > 0 && (
                 <div className="image-preview-container">
                   {newProduct.previewImages.map((img, index) => (
@@ -604,16 +520,16 @@ return (
                 </div>
               )}
               <div className="modal-actions">
-              <button onClick={() => setNewProduct(null)} disabled={isSaving}>
-                ยกเลิก
-              </button>
-              <button onClick={handleSaveNewProduct} disabled={isSaving}>
-                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-              </button>
+                <button onClick={() => setNewProduct(null)} disabled={isSaving}>
+                  ยกเลิก
+                </button>
+                <button onClick={handleSaveNewProduct} disabled={isSaving}>
+                  {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
         {selectedProduct && (
           <div className="modal image-gallery-modal" onClick={handleCloseGallery}>
@@ -636,7 +552,7 @@ return (
         )}
       </section>
 
-      {user.role === 'admin' && (
+      {user?.role === 'admin' && (
         <section className="others-products">
           <h2>สินค้าของผู้ขายอื่น</h2>
           <div className="product-list" style={{ overflow: 'hidden', maxHeight: 'none' }}>
@@ -665,13 +581,13 @@ return (
         <h2>รายงานคำสั่งซื้อ</h2>
         {orders ? (
           <>
-              <div className="revenue-summary">
-                <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}ทั้งหมด: {formatCurrency(orders.totalRevenue)}</p>
-                <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}วันนี้: {formatCurrency(orders.dailyRevenue)}</p>
-                <p>ยอด{user.role === 'admin' ? 'รายได้' : 'ขาย'}เดือนนี้: {formatCurrency(orders.monthlyRevenue)}</p>
-                <p>คำสั่งซื้อที่เสร็จสิ้น: {orders.completedOrders} รายการ</p>
-                <p>คำสั่งซื้อที่รอดำเนินการ: {orders.pendingOrders} รายการ</p>
-              </div>
+            <div className="revenue-summary">
+              <p>ยอด{user?.role === 'admin' ? 'รายได้' : 'ขาย'}ทั้งหมด: {formatCurrency(orders.totalRevenue)}</p>
+              <p>ยอด{user?.role === 'admin' ? 'รายได้' : 'ขาย'}วันนี้: {formatCurrency(orders.dailyRevenue)}</p>
+              <p>ยอด{user?.role === 'admin' ? 'รายได้' : 'ขาย'}เดือนนี้: {formatCurrency(orders.monthlyRevenue)}</p>
+              <p>คำสั่งซื้อที่เสร็จสิ้น: {orders.completedOrders} รายการ</p>
+              <p>คำสั่งซื้อที่รอดำเนินการ: {orders.pendingOrders} รายการ</p>
+            </div>
             <div className="status-summary">
               <h3>สรุปสถานะ</h3>
               {orders.statusSummary ? (
@@ -756,123 +672,29 @@ return (
                     <option value="cancelled">ยกเลิก</option>
                   </select>
                   <div className="modal-actions">
-              <button onClick={() => setEditOrder(null)} disabled={isSaving}>
-                ยกเลิก
-              </button>
-              <button onClick={handleSaveOrder} disabled={isSaving}>
-                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                    <button onClick={() => setEditOrder(null)} disabled={isSaving}>
+                      ยกเลิก
+                    </button>
+                    <button onClick={handleSaveOrder} disabled={isSaving}>
+                      {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <p>ไม่มีข้อมูลคำสั่งซื้อ</p>
         )}
       </section>
 
-      {editProfile && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>แก้ไขโปรไฟล์</h3>
-            <h4>ชื่อ - นามสกุล</h4>
-            <input
-              type="text"
-              value={editProfile.fname || ''}
-              onChange={(e) => setEditProfile({ ...editProfile, fname: e.target.value })}
-              placeholder="ชื่อ"
-              required
-            />
-            <input
-              type="text"
-              value={editProfile.lname || ''}
-              onChange={(e) => setEditProfile({ ...editProfile, lname: e.target.value })}
-              placeholder="นามสกุล"
-              required
-            />
-            
-            {/* ที่อยู่ */}
-            <h4>ที่อยู่</h4>
-            <input
-              type="text"
-              value={editProfile.address?.street || ''}
-              onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, street: e.target.value } })}
-              placeholder="ถนน เขต ตำบง"
-              required
-            />
-            <input
-              type="text"
-              value={editProfile.address?.city || ''}
-              onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, city: e.target.value } })}
-              placeholder="อำเภอ"
-              required
-            />
-            <div className="form-group">
-              <label>จังหวัด</label>
-              <select
-                value={editProfile.address?.province || ''}
-                onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, province: e.target.value } })}
-                required
-              >
-                <option value="">เลือกจังหวัด</option>
-                {provinces.map((prov, index) => (
-                  <option key={index} value={prov}>{prov}</option>
-                ))}
-              </select>
-            </div>
-            <input
-              type="text"
-              value={editProfile.address?.postalCode || ''}
-              onChange={(e) => setEditProfile({ ...editProfile, address: { ...editProfile.address, postalCode: e.target.value } })}
-              placeholder="รหัสไปรษณีย์"
-            />
-            <div className="form-group">
-              <label>ประเทศ</label>
-              <input
-                type="text"
-                value="Thailand"
-                disabled
-                style={{ backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
-                required
-              />
-            </div>
-
-            <input type="file" accept="image/*" onChange={handleImageChange} />
-            {editProfile.previewImage && (
-              <div className="image-preview-container">
-                <img src={editProfile.previewImage} alt="Profile Preview" className="image-preview" />
-              </div>
-            )}
-            <div className="modal-actions">
-              <button onClick={() => setEditProfile(null)} disabled={isSaving}>
-                ยกเลิก
-              </button>
-              <button onClick={handleSaveProfile} disabled={isSaving}>
-                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="error-modal">
-          <div className="error-modal-content">
-            <h3>เกิดข้อผิดพลาด</h3>
-            <p>{error}</p>
-            <button onClick={() => setError('')}>ตกลง</button>
-          </div>
-        </div>
-      )}
-
-      {user.role === 'seller' && (
+      {user?.role === 'seller' && (
         <div className="chat-button" onClick={() => setIsReportModalOpen(true)}>
           💬 รายงานปัญหา
         </div>
       )}
 
-      {isReportModalOpen && user.role === 'seller' && (
+      {isReportModalOpen && user?.role === 'seller' && (
         <div className="modal">
           <div className="modal-content">
             <h3>รายงานปัญหา</h3>

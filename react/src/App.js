@@ -8,13 +8,14 @@ import UserManagement from './components/UserManagement';
 import ViewReports from './components/ViewReports';
 import Navbar from './components/Navbar';
 import CategoryManagement from './components/CategoryManagement';
-import ForgotPassword from './components/ForgotPassword'; // เพิ่มหน้า ForgotPassword
-import ResetPassword from './components/ResetPassword'; // เพิ่มหน้า ResetPassword
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
+import EditProfile from './components/EditProfile';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editProfile, setEditProfile] = useState(null);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,11 +50,15 @@ function App() {
   };
 
   const handleEditProfile = () => {
-    setEditProfile(user);
+    setIsEditProfileOpen(true);
+  };
+
+  const handleCloseEditProfile = () => {
+    setIsEditProfileOpen(false);
   };
 
   const updateUser = (updatedUser) => {
-    setUser(updatedUser);
+    setUser(updatedUser); // อัปเดต state ทันที
   };
 
   if (loading) {
@@ -63,12 +68,23 @@ function App() {
   return (
     <div className="app">
       {user && (
-        <Navbar
-          user={user}
-          onLogout={handleLogout}
-          onEditProfile={handleEditProfile}
-        />
+        <>
+          <Navbar
+            user={user}
+            onLogout={handleLogout}
+            onEditProfile={handleEditProfile}
+          />
+          {isEditProfileOpen && (
+            <EditProfile
+              user={user}
+              setEditProfile={setIsEditProfileOpen}
+              updateUser={updateUser}
+              onClose={handleCloseEditProfile}
+            />
+          )}
+        </>
       )}
+
       <Routes>
         <Route
           path="/login"
@@ -90,12 +106,7 @@ function App() {
           path="/dashboard"
           element={
             user ? (
-              <Dashboard
-                user={user}
-                editProfile={editProfile}
-                setEditProfile={setEditProfile}
-                updateUser={updateUser}
-              />
+              <Dashboard user={user} updateUser={updateUser} />
             ) : (
               <Navigate to="/login" />
             )
