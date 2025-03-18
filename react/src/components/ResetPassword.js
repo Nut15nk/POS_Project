@@ -28,7 +28,11 @@ const ResetPassword = () => {
       setMessage(response.message);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน');
+      const errorMessage = err.response?.data?.message || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน';
+      setError(errorMessage);
+      if (errorMessage.includes('Token ใช้ไปแล้ว') || errorMessage.includes('Token หมดอายุ')) {
+        setTimeout(() => navigate('/login'), 2000);
+      }
     } finally {
       setLoading(false);
     }

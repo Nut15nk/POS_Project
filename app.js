@@ -92,7 +92,11 @@ const productStorage = new CloudinaryStorage({
   params: {
     folder: 'product_images',
     allowed_formats: ['jpg', 'png', 'jpeg'],
-    public_id: (req, file) => `product-${Date.now()}`,
+    public_id: (req, file) => {
+      const publicId = `product-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // เพิ่ม random string เพื่อป้องกันซ้ำ
+      console.log(`Generated public_id for ${file.originalname}: ${publicId}`);
+      return publicId;
+    },
     transformation: [{ width: 800, height: 800, crop: 'limit' }, { quality: 'auto' }]
   }
 });
@@ -110,7 +114,7 @@ const uploadProductImages = multer({
     }
   }
 }).array('product_images', 10);
-
+  
 // Middleware จัดการ error จาก multer
 const multerErrorHandler = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {

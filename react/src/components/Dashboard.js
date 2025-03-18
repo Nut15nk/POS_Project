@@ -192,6 +192,15 @@ function Dashboard({ user, updateUser }) {
     if (isSaving) return;
     setIsSaving(true);
     try {
+      // ตรวจสอบว่ามีรูปภาพหรือไม่ (ทั้งจากเดิมและใหม่)
+      const hasOriginalImages = editProduct.product_image_urls && editProduct.product_image_urls.length > 0;
+      const hasNewImages = editProduct.newImages && editProduct.newImages.length > 0;
+      if (!hasOriginalImages && !hasNewImages) {
+        alert('กรุณาอัปโหลดรูปภาพสินค้าอย่างน้อย 1 รูปก่อนบันทึก');
+        setIsSaving(false);
+        return;
+      }
+  
       const formData = new FormData();
       formData.append('name', editProduct.name);
       formData.append('price', editProduct.price);
@@ -199,14 +208,15 @@ function Dashboard({ user, updateUser }) {
       formData.append('category', editProduct.category ? editProduct.category.id : '');
       formData.append('stock', editProduct.stock);
       if (editProduct.newImages && editProduct.newImages.length > 0) {
-        editProduct.newImages.forEach((image) => {
+        editProduct.newImages.forEach((image, index) => {
+          console.log(`Appending file ${index}: ${image.name}`);
           formData.append('product_images', image);
         });
       }
       if (deletedImages.length > 0) {
         formData.append('deletedImages', JSON.stringify(deletedImages));
       }
-
+  
       await updateProduct(editProduct.id, formData);
       setEditProduct(null);
       setDeletedImages([]);
@@ -222,6 +232,14 @@ function Dashboard({ user, updateUser }) {
     if (isSaving) return;
     setIsSaving(true);
     try {
+      // ตรวจสอบว่ามีรูปภาพหรือไม่
+      const hasImages = newProduct.newImages && newProduct.newImages.length > 0;
+      if (!hasImages) {
+        alert('กรุณาอัปโหลดรูปภาพสินค้าอย่างน้อย 1 รูปก่อนบันทึก');
+        setIsSaving(false);
+        return;
+      }
+  
       const formData = new FormData();
       formData.append('name', newProduct.name);
       formData.append('price', newProduct.price);
@@ -229,14 +247,14 @@ function Dashboard({ user, updateUser }) {
       formData.append('category', newProduct.category ? newProduct.category.id : '');
       formData.append('stock', newProduct.stock);
       formData.append('province', user.address?.province || '');
+  
       if (newProduct.newImages && newProduct.newImages.length > 0) {
-        newProduct.newImages.forEach((image) => {
+        newProduct.newImages.forEach((image, index) => {
+          console.log(`Appending file ${index}: ${image.name}`);
           formData.append('product_images', image);
         });
-      } else {
-        throw new Error('กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป');
       }
-      
+  
       await uploadProduct(formData);
       setNewProduct(null);
       fetchData(user.role);
@@ -415,17 +433,46 @@ function Dashboard({ user, updateUser }) {
                 placeholder="จำนวนสต็อก"
                 min="0"
               />
-              <input type="file" accept="image/*" onChange={(e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const previewImage = URL.createObjectURL(file);
-                setEditProduct({ 
-                  ...editProduct, 
-                  previewImages: [...editProduct.previewImages, previewImage], 
-                  newImages: [...editProduct.newImages, file] 
+            <input 
+              type="file" 
+              accept="image/jpeg,image/jpg,image/png" // จำกัดนามสกุล
+              multiple // เลือกหลายไฟล์ได้
+              onChange={(e) => {
+                const files = Array.from(e.target.files); // แปลง FileList เป็น Array
+                if (!files || files.length === 0) return;
+
+                // กรองเฉพาะไฟล์ที่เป็น jpg, png, jpeg
+                const validFiles = files.filter(file => {
+                  const filetypes = /jpeg|jpg|png/;
+                  const isValid = filetypes.test(file.mimetype || file.type);
+                  return isValid;
                 });
-                e.target.value = '';
-              }} />
+
+                // ตรวจสอบว่ามีไฟล์ที่ไม่ถูกต้องหรือไม่
+                if (validFiles.length !== files.length) {
+                  const invalidFiles = files
+                    .filter(file => !validFiles.includes(file))
+                    .map(file => file.name);
+                  alert(`บางไฟล์ไม่สามารถเลือกได้: ${invalidFiles.join(', ')}\nกรุณาเลือกเฉพาะไฟล์ .jpg, .png, หรือ .jpeg เท่านั้น`);
+                }
+
+                // ถ้าไม่มีไฟล์ที่ถูกต้อง ให้หยุด
+                if (validFiles.length === 0) {
+                  e.target.value = '';
+                  return;
+                }
+
+                // สร้าง preview และเก็บไฟล์
+                const newPreviewImages = validFiles.map(file => URL.createObjectURL(file));
+                setEditProduct({
+                  ...editProduct,
+                  previewImages: [...editProduct.previewImages, ...newPreviewImages], // เพิ่ม previewImages
+                  newImages: [...editProduct.newImages, ...validFiles] // เพิ่ม newImages
+                });
+
+                e.target.value = ''; // รีเซ็ต input
+              }} 
+            />
               {editProduct.previewImages && editProduct.previewImages.length > 0 && (
                 <div className="image-preview-container">
                   {editProduct.previewImages.map((img, index) => (
@@ -493,17 +540,46 @@ function Dashboard({ user, updateUser }) {
                 placeholder="จำนวนสต็อก"
                 min="0"
               />
-              <input type="file" accept="image/*" onChange={(e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const previewImage = URL.createObjectURL(file);
-                setNewProduct({ 
-                  ...newProduct, 
-                  previewImages: [...newProduct.previewImages, previewImage], 
-                  newImages: [...newProduct.newImages, file] 
-                });
-                e.target.value = '';
-              }} />
+                <input 
+                  type="file" 
+                  accept="image/jpeg,image/jpg,image/png" // จำกัดเฉพาะ jpg, png, jpeg
+                  multiple // เพิ่ม attribute เพื่อเลือกหลายไฟล์
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files); // แปลง FileList เป็น Array
+                    if (!files || files.length === 0) return;
+
+                    // กรองเฉพาะไฟล์ที่เป็น jpg, png, jpeg
+                    const validFiles = files.filter(file => {
+                      const filetypes = /jpeg|jpg|png/;
+                      const isValid = filetypes.test(file.mimetype || file.type);
+                      return isValid;
+                    });
+
+                    // ตรวจสอบว่ามีไฟล์ที่ไม่ถูกต้องหรือไม่
+                    if (validFiles.length !== files.length) {
+                      const invalidFiles = files
+                        .filter(file => !validFiles.includes(file))
+                        .map(file => file.name);
+                      alert(`บางไฟล์ไม่สามารถเลือกได้: ${invalidFiles.join(', ')}\nกรุณาเลือกเฉพาะไฟล์ .jpg, .png, หรือ .jpeg เท่านั้น`);
+                    }
+
+                    // ถ้าไม่มีไฟล์ที่ถูกต้อง ให้หยุด
+                    if (validFiles.length === 0) {
+                      e.target.value = '';
+                      return;
+                    }
+
+                    // สร้าง preview และเก็บไฟล์
+                    const newPreviewImages = validFiles.map(file => URL.createObjectURL(file));
+                    setNewProduct({
+                      ...newProduct,
+                      previewImages: [...newProduct.previewImages, ...newPreviewImages], // เพิ่ม previewImages
+                      newImages: [...newProduct.newImages, ...validFiles] // เพิ่ม newImages
+                    });
+
+                    e.target.value = ''; // รีเซ็ต input
+                  }} 
+                />
               {newProduct.previewImages && newProduct.previewImages.length > 0 && (
                 <div className="image-preview-container">
                   {newProduct.previewImages.map((img, index) => (

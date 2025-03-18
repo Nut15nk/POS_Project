@@ -3,7 +3,7 @@ const cloudinary = require('cloudinary').v2;
 
 const uploadProduct = async (req, res) => {
   try {
-    const { name, price, description, category, stock, province } = req.body; // รับค่า province จาก body
+    const { name, price, description, category, stock, province } = req.body;
     if (!name || !price || !description || !category || !stock) {
       return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อ, ราคา, รายละเอียด, หมวดหมู่ และสต็อก' });
     }
@@ -32,10 +32,10 @@ const uploadProduct = async (req, res) => {
       price: parseFloat(price),
       description,
       stock: parseInt(stock) || 0,
-      category, // ต้องเป็น ObjectId ของ Category
+      category,
       product_image_urls: productImageUrls,
       createdBy: req.user.id,
-      province: province || req.user.address?.province || '' // ใช้ province จาก body หรือจากผู้ขาย
+      province: province || req.user.address?.province || ''
     });
 
     const savedProduct = await product.save();
